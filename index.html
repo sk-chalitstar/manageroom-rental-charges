@@ -662,11 +662,19 @@
 
         <!-- Electricity -->
         <div class="border border-slate-200 rounded-xl p-3 bg-amber-50/50 space-y-2">
-          <p class="text-xs font-bold text-amber-800 flex items-center gap-1.5">
-            <i data-lucide="zap" class="w-4 h-4 text-amber-600"></i>
-            ค่าไฟฟ้า (อัตรา <span id="rateLabelElec">8</span> บ./หน่วย)
-          </p>
-          <div class="grid grid-cols-3 gap-2">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+              <i data-lucide="zap" class="w-4 h-4 text-amber-600"></i>
+              ค่าไฟฟ้า
+            </p>
+            <div class="flex items-center bg-amber-200/60 p-0.5 rounded-lg text-[11px]">
+              <button type="button" onclick="setBillElecMode('meter')" id="btnBillElecMeter" class="px-2 py-0.5 rounded font-semibold bg-white text-amber-900 shadow-xs">⚡ จดมิเตอร์เอง</button>
+              <button type="button" onclick="setBillElecMode('manual')" id="btnBillElecManual" class="px-2 py-0.5 rounded font-semibold text-amber-800 hover:text-amber-950">💵 ราคาเหมา</button>
+            </div>
+          </div>
+
+          <!-- Meter Mode -->
+          <div id="billElecMeterGroup" class="grid grid-cols-4 gap-2">
             <div>
               <label class="text-[10px] text-slate-500">มิเตอร์เดิม</label>
               <input type="number" id="formBillPrevElec" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white">
@@ -676,19 +684,37 @@
               <input type="number" id="formBillCurrElec" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white">
             </div>
             <div>
-              <label class="text-[10px] text-slate-500">คำนวณเงิน</label>
-              <div id="calcElecAmount" class="font-bold text-slate-700 text-sm py-1">0 ฿</div>
+              <label class="text-[10px] text-slate-500">ราคา/หน่วย</label>
+              <input type="number" step="0.5" id="formBillElecRate" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white font-semibold">
             </div>
+            <div>
+              <label class="text-[10px] text-slate-500">คำนวณเงิน</label>
+              <div id="calcElecAmount" class="font-bold text-amber-700 text-xs py-1.5">0 ฿</div>
+            </div>
+          </div>
+
+          <!-- Manual Mode -->
+          <div id="billElecManualGroup" class="hidden">
+            <label class="text-[10px] font-semibold text-amber-800">ระบุยอดเงินค่าไฟเหมาจ่าย (บาท)</label>
+            <input type="number" id="formBillElecManualAmount" value="0" oninput="calculateBillTotal()" placeholder="0" class="w-full border border-amber-300 rounded-lg p-2 text-xs bg-white focus:outline-amber-500 font-bold">
           </div>
         </div>
 
         <!-- Water -->
         <div class="border border-slate-200 rounded-xl p-3 bg-cyan-50/50 space-y-2">
-          <p class="text-xs font-bold text-cyan-800 flex items-center gap-1.5">
-            <i data-lucide="droplet" class="w-4 h-4 text-cyan-600"></i>
-            ค่าน้ำประปา (อัตรา <span id="rateLabelWater">18</span> บ./หน่วย)
-          </p>
-          <div class="grid grid-cols-3 gap-2">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-bold text-cyan-800 flex items-center gap-1.5">
+              <i data-lucide="droplet" class="w-4 h-4 text-cyan-600"></i>
+              ค่าน้ำประปา
+            </p>
+            <div class="flex items-center bg-cyan-200/60 p-0.5 rounded-lg text-[11px]">
+              <button type="button" onclick="setBillWaterMode('meter')" id="btnBillWaterMeter" class="px-2 py-0.5 rounded font-semibold bg-white text-cyan-900 shadow-xs">💧 จดมิเตอร์เอง</button>
+              <button type="button" onclick="setBillWaterMode('manual')" id="btnBillWaterManual" class="px-2 py-0.5 rounded font-semibold text-cyan-800 hover:text-cyan-950">💵 ราคาเหมา</button>
+            </div>
+          </div>
+
+          <!-- Meter Mode -->
+          <div id="billWaterMeterGroup" class="grid grid-cols-4 gap-2">
             <div>
               <label class="text-[10px] text-slate-500">มิเตอร์เดิม</label>
               <input type="number" id="formBillPrevWater" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white">
@@ -698,9 +724,19 @@
               <input type="number" id="formBillCurrWater" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white">
             </div>
             <div>
-              <label class="text-[10px] text-slate-500">คำนวณเงิน</label>
-              <div id="calcWaterAmount" class="font-bold text-slate-700 text-sm py-1">0 ฿</div>
+              <label class="text-[10px] text-slate-500">ราคา/หน่วย</label>
+              <input type="number" step="0.5" id="formBillWaterRate" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white font-semibold">
             </div>
+            <div>
+              <label class="text-[10px] text-slate-500">คำนวณเงิน</label>
+              <div id="calcWaterAmount" class="font-bold text-cyan-700 text-xs py-1.5">0 ฿</div>
+            </div>
+          </div>
+
+          <!-- Manual Mode -->
+          <div id="billWaterManualGroup" class="hidden">
+            <label class="text-[10px] font-semibold text-cyan-800">ระบุยอดเงินค่าน้ำเหมาจ่าย (บาท)</label>
+            <input type="number" id="formBillWaterManualAmount" value="0" oninput="calculateBillTotal()" placeholder="0" class="w-full border border-cyan-300 rounded-lg p-2 text-xs bg-white focus:outline-cyan-500 font-bold">
           </div>
         </div>
 
