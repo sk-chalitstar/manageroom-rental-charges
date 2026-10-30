@@ -778,6 +778,22 @@ function setCardWaterMode(roomNumber, mode) {
   updateMeterCardCalc(roomNumber);
 }
 
+function syncGlobalDueDateToCards() {
+  const globalDue = document.getElementById('meterGlobalDueDate')?.value || '';
+  state.rooms.forEach(r => {
+    const cardEl = document.getElementById(`card-m-duedate-${r.number}`);
+    if (cardEl) cardEl.value = globalDue;
+    const tableEl = document.getElementById(`m-duedate-${r.number}`);
+    if (tableEl) tableEl.value = globalDue;
+  });
+}
+
+function clearGlobalDueDate() {
+  const globalEl = document.getElementById('meterGlobalDueDate');
+  if (globalEl) globalEl.value = '';
+  syncGlobalDueDateToCards();
+}
+
 function renderMeter() {
   const tbody = document.getElementById('meterEntryTableBody');
   const cardContainer = document.getElementById('meterCardContainer');
@@ -789,6 +805,8 @@ function renderMeter() {
     cardContainer.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 bg-slate-50 rounded-2xl border border-slate-200">ยังไม่มีห้องที่มีผู้เช่า</div>`;
     return;
   }
+
+  const globalDueDateVal = document.getElementById('meterGlobalDueDate')?.value || '';
 
   // Card View (ตรงตามรูปที่ 3)
   cardContainer.innerHTML = occupiedRooms.map(room => {
@@ -923,13 +941,20 @@ function renderMeter() {
               <input type="text" id="card-m-remark-${room.number}" value="${remarkVal}" placeholder="เช่น ค่าเช่าตู้เย็น, ค่าคีย์การ์ด" class="w-full border border-amber-300 rounded-lg p-1.5 text-xs bg-amber-50/50 focus:outline-amber-500">
             </div>
           </div>
+        </div>
 
-          <div class="pt-2 border-t border-slate-200">
-            <label class="block text-[11px] font-semibold text-slate-700 mb-1 flex items-center justify-between">
-              <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5 text-blue-600"></i> กำหนดชำระภายใน (ไม่บังคับ)</span>
-              <span class="text-[10px] text-slate-400 font-normal">เว้นว่างไว้จะเป็น "-"</span>
+        <!-- Dedicated Due Date Box on Card -->
+        <div class="bg-blue-50/80 border border-blue-200 rounded-xl p-3 flex items-center justify-between gap-2 shadow-2xs">
+          <div>
+            <label class="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+              <i data-lucide="calendar" class="w-4 h-4 text-blue-600"></i>
+              กำหนดชำระภายใน:
             </label>
-            <input type="date" id="card-m-duedate-${room.number}" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white focus:outline-blue-500 font-medium text-slate-700">
+            <p class="text-[10px] text-blue-600">(เว้นว่างไว้จะเป็น "-")</p>
+          </div>
+          <div class="flex items-center gap-1">
+            <input type="date" id="card-m-duedate-${room.number}" value="${globalDueDateVal}" class="border border-blue-300 rounded-lg px-2 py-1 text-xs bg-white text-slate-800 font-semibold focus:ring-1 focus:ring-blue-500">
+            <button type="button" onclick="document.getElementById('card-m-duedate-${room.number}').value=''" class="text-[11px] text-slate-500 hover:text-rose-600 px-1.5 py-1 bg-white border border-slate-200 rounded-md font-medium" title="ล้างวันที่ (เว้นว่างเป็น -)">ล้าง</button>
           </div>
         </div>
 
@@ -996,7 +1021,7 @@ function renderMeter() {
           <input type="text" id="m-remark-${room.number}" value="${remarkVal}" placeholder="ระบุหมายเหตุ" class="w-28 border border-amber-300 rounded px-1.5 py-1 text-xs ${otherVal ? '' : 'hidden'} bg-amber-50/50">
         </td>
         <td class="px-3 py-3">
-          <input type="date" id="m-duedate-${room.number}" class="w-28 border border-slate-200 rounded px-1.5 py-1 text-xs" title="กำหนดชำระภายใน (ไม่บังคับ)">
+          <input type="date" id="m-duedate-${room.number}" value="${globalDueDateVal}" class="w-28 border border-slate-200 rounded px-1.5 py-1 text-xs" title="กำหนดชำระภายใน (ไม่บังคับ)">
         </td>
 
         <td class="px-3 py-3 font-bold text-blue-600 text-sm whitespace-nowrap" id="m-total-${room.number}">
@@ -1108,7 +1133,7 @@ async function createBillFromCard(roomNumber) {
   const licensePlate = document.getElementById(`card-m-plate-${roomNumber}`)?.value.trim() || '';
   const otherFee = Number(document.getElementById(`card-m-other-${roomNumber}`)?.value || 0);
   const otherFeeRemark = document.getElementById(`card-m-remark-${roomNumber}`)?.value.trim() || '';
-  const dueDate = document.getElementById(`card-m-duedate-${roomNumber}`)?.value || '';
+  const dueDate = document.getElementById(`card-m-duedate-${roomNumber}`)?.value || document.getElementById('meterGlobalDueDate')?.value || '';
 
   const billPayload = {
     roomNumber: room.number,
@@ -1183,7 +1208,7 @@ async function createBillFromMeterRow(roomNumber) {
   const licensePlate = document.getElementById(`m-plate-${roomNumber}`)?.value.trim() || '';
   const otherFee = Number(document.getElementById(`m-other-${roomNumber}`)?.value || 0);
   const otherFeeRemark = document.getElementById(`m-remark-${roomNumber}`)?.value.trim() || '';
-  const dueDate = document.getElementById(`m-duedate-${roomNumber}`)?.value || '';
+  const dueDate = document.getElementById(`m-duedate-${roomNumber}`)?.value || document.getElementById('meterGlobalDueDate')?.value || '';
 
   const elecRate = Number(state.settings.electricRate || 8);
   const waterRate = Number(state.settings.waterRate || 18);

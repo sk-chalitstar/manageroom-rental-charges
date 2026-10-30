@@ -257,11 +257,19 @@
 
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
           <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3">
               <h3 class="font-bold text-slate-800 text-base">บันทึกมิเตอร์รอบปัจจุบัน</h3>
               <div class="flex items-center gap-2">
                 <label class="text-xs text-slate-500 font-medium">รอบบิลประจำเดือน:</label>
                 <input type="text" id="meterBillingMonth" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs bg-slate-50 font-semibold" value="">
+              </div>
+              <div class="flex items-center gap-2 bg-blue-50/80 border border-blue-200 rounded-xl px-3 py-1.5 shadow-2xs">
+                <label class="text-xs text-blue-900 font-bold flex items-center gap-1.5">
+                  <i data-lucide="calendar" class="w-4 h-4 text-blue-600"></i>
+                  กำหนดชำระทุกห้อง:
+                </label>
+                <input type="date" id="meterGlobalDueDate" onchange="syncGlobalDueDateToCards()" class="border border-blue-300 rounded-lg px-2 py-1 text-xs bg-white text-slate-800 font-medium focus:ring-1 focus:ring-blue-500" title="กำหนดชำระภายในสำหรับทุกห้อง (เว้นว่างไว้หากไม่ต้องการกำหนด)">
+                <button type="button" onclick="clearGlobalDueDate()" class="text-[10px] text-slate-500 hover:text-rose-600 font-medium px-1" title="ล้างวันที่ (เว้นว่างเป็น -)">ล้าง</button>
               </div>
             </div>
 
@@ -765,15 +773,26 @@
           </div>
         </div>
 
+        <!-- Due Date Field -->
+        <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <label class="block text-xs font-bold text-blue-900 mb-0.5 flex items-center gap-1.5">
+              <i data-lucide="calendar" class="w-4 h-4 text-blue-600"></i>
+              กำหนดชำระภายใน (ไม่บังคับ)
+            </label>
+            <p class="text-[11px] text-blue-700">สามารถเลือกวันที่ครบกำหนด หรือปล่อยว่างไว้ให้เป็น "-" ได้</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <input type="date" id="formBillDueDate" class="border border-blue-300 rounded-lg p-2 text-xs bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-blue-500">
+            <button type="button" onclick="document.getElementById('formBillDueDate').value=''" class="text-xs text-slate-500 hover:text-rose-600 px-2 py-1 bg-white border border-slate-200 rounded-lg" title="ล้างวันที่">ล้าง</button>
+          </div>
+        </div>
+
         <!-- Grand Total Summary Banner -->
         <div class="bg-slate-900 text-white rounded-xl p-3 flex items-center justify-between">
           <div>
             <p class="text-xs text-slate-400">ยอดชำระสุทธิทั้งสิ้น</p>
             <h4 id="calcGrandTotal" class="text-xl font-bold text-emerald-400">0 บาท</h4>
-          </div>
-          <div>
-            <label class="block text-[11px] text-slate-400 mb-1">กำหนดชำระภายใน (ไม่บังคับ)</label>
-            <input type="date" id="formBillDueDate" class="bg-slate-800 text-white border border-slate-700 rounded-lg px-2 py-1 text-xs">
           </div>
         </div>
 
