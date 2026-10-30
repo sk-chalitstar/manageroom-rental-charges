@@ -21,6 +21,8 @@ function formatTag(id, value) {
 function generatePromptPayPayload(target, amount = null) {
   if (!target) return '';
   const cleanTarget = String(target).replace(/[^0-9]/g, '');
+  if (!cleanTarget) return '';
+
   let formattedTarget = '';
   let subTag = '';
 
@@ -55,3 +57,9 @@ function generatePromptPayPayload(target, amount = null) {
   return payloadToCrc + checksum;
 }
 
+function generatePromptPayQRUrl(target, amount = null) {
+  if (!target) return '';
+  const payload = generatePromptPayPayload(target, amount);
+  if (!payload) return '';
+  return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(payload)}`;
+}

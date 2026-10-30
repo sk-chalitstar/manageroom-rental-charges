@@ -156,35 +156,82 @@ function getRoomsList() {
 
 function getBillsList() {
   const rows = getSheetData('Bills');
-  return rows.map(b => ({
-    id: String(b.id),
-    roomNumber: String(b.roomNumber),
-    month: b.month || '',
-    createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
-    dueDate: b.dueDate ? String(b.dueDate).substring(0, 10) : '',
-    rent: Number(b.rent) || 0,
-    prevElectricMeter: Number(b.prevElectricMeter) || 0,
-    currElectricMeter: Number(b.currElectricMeter) || 0,
-    electricUnits: Number(b.electricUnits) || 0,
-    electricRate: Number(b.electricRate) || 8,
-    electricAmount: Number(b.electricAmount) || 0,
-    prevWaterMeter: Number(b.prevWaterMeter) || 0,
-    currWaterMeter: Number(b.currWaterMeter) || 0,
-    waterUnits: Number(b.waterUnits) || 0,
-    waterRate: Number(b.waterRate) || 18,
-    waterAmount: Number(b.waterAmount) || 0,
-    commonFee: Number(b.commonFee) || 0,
-    parkingFee: Number(b.parkingFee) || 0,
-    licensePlate: b.licensePlate || '',
-    otherFee: Number(b.otherFee) || 0,
-    otherFeeRemark: b.otherFeeRemark || '',
-    discount: Number(b.discount) || 0,
-    totalAmount: Number(b.totalAmount) || 0,
-    status: b.status || 'pending',
-    paidAt: b.paidAt ? new Date(b.paidAt).toISOString() : null,
-    lineSent: b.lineSent === true || b.lineSent === 'true',
-    lineSentAt: b.lineSentAt ? new Date(b.lineSentAt).toISOString() : null
-  }));
+  const rooms = getRoomsList();
+  const roomMap = {};
+  rooms.forEach(r => { roomMap[r.number] = r; });
+
+  return rows.map(b => {
+    const room = roomMap[String(b.roomNumber)];
+    return {
+      id: String(b.id),
+      roomNumber: String(b.roomNumber),
+      tenantName: (room && room.tenant && room.tenant.name) || b.tenantName || '',
+      month: b.month || '',
+      createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
+      dueDate: b.dueDate ? String(b.dueDate).substring(0, 10) : '',
+      rent: Number(b.rent) || 0,
+      prevElectricMeter: Number(b.prevElectricMeter) || 0,
+      currElectricMeter: Number(b.currElectricMeter) || 0,
+      electricUnits: Number(b.electricUnits) || 0,
+      electricRate: Number(b.electricRate) || 8,
+      electricAmount: Number(b.electricAmount) || 0,
+      prevWaterMeter: Number(b.prevWaterMeter) || 0,
+      currWaterMeter: Number(b.currWaterMeter) || 0,
+      waterUnits: Number(b.waterUnits) || 0,
+      waterRate: Number(b.waterRate) || 18,
+      waterAmount: Number(b.waterAmount) || 0,
+      commonFee: Number(b.commonFee) || 0,
+      parkingFee: Number(b.parkingFee) || 0,
+      licensePlate: b.licensePlate || '',
+      otherFee: Number(b.otherFee) || 0,
+      otherFeeRemark: b.otherFeeRemark || '',
+      discount: Number(b.discount) || 0,
+      totalAmount: Number(b.totalAmount) || 0,
+      status: b.status || 'pending',
+      paidAt: b.paidAt ? new Date(b.paidAt).toISOString() : null,
+      lineSent: b.lineSent === true || b.lineSent === 'true',
+      lineSentAt: b.lineSentAt ? new Date(b.lineSentAt).toISOString() : null
+    };
+  });
+}
+
+function formatThaiDateTime(dateVal) {
+  if (!dateVal) return '-';
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    let year = d.getFullYear();
+    if (year < 2400) year += 543;
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes} น.`;
+  } catch (e) {
+    return String(dateVal);
+  }
+}
+
+function formatMonthName(monthVal) {
+  if (!monthVal) return '-';
+  const str = String(monthVal).trim();
+  const thaiMonths = [
+    'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+  ];
+  for (let i = 0; i < thaiMonths.length; i++) {
+    if (str.indexOf(thaiMonths[i]) !== -1) return str;
+  }
+  try {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      const monthIdx = d.getMonth();
+      let year = d.getFullYear();
+      if (year < 2400) year += 543;
+      return thaiMonths[monthIdx] + ' ' + year;
+    }
+  } catch (e) {}
+  return str;
 }
 
 // ------------------------------------------------------------------------------
@@ -299,53 +346,51 @@ function handleSaveRoom(room) {
   const rows = sheet.getDataRange().getValues();
   const roomNumStr = String(room.number).trim();
 
-  let targetRowIndex = -1;
+  let existingRow = -1;
   for (let i = 1; i < rows.length; i++) {
     if (String(rows[i][0]).trim() === roomNumStr) {
-      targetRowIndex = i + 1; // 1-based index
+      existingRow = i + 1;
       break;
     }
   }
 
-  const tenant = room.tenant || {};
   const rowData = [
     roomNumStr,
     room.floor || 1,
     room.type || 'มาตรฐาน',
-    Number(room.price) || 0,
-    Number(room.commonFee) || 0,
-    Number(room.parkingFee) || 0,
+    room.price || 0,
+    room.commonFee !== undefined ? room.commonFee : 300,
+    room.parkingFee || 0,
     room.licensePlate || '',
-    Number(room.otherFee) || 0,
+    room.otherFee || 0,
     room.otherFeeRemark || '',
-    room.status || 'occupied',
-    tenant.name || '',
-    tenant.phone || '',
-    tenant.lineUserId || '',
-    tenant.startDate || '',
-    Number(room.lastElectricMeter) || 0,
-    Number(room.lastWaterMeter) || 0
+    room.status || 'vacant',
+    room.tenant?.name || '',
+    room.tenant?.phone || '',
+    room.tenant?.lineUserId || '',
+    room.tenant?.startDate || '',
+    room.lastElectricMeter !== undefined ? room.lastElectricMeter : 0,
+    room.lastWaterMeter !== undefined ? room.lastWaterMeter : 0
   ];
 
-  if (targetRowIndex > 0) {
-    sheet.getRange(targetRowIndex, 1, 1, rowData.length).setValues([rowData]);
+  if (existingRow > 0) {
+    sheet.getRange(existingRow, 1, 1, rowData.length).setValues([rowData]);
   } else {
     sheet.appendRow(rowData);
   }
 
-  return createJsonResponse({ success: true, data: room });
+  return createJsonResponse({ success: true, message: 'บันทึกห้องพักเรียบร้อย' });
 }
 
 function handleDeleteRoom(roomNumber) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('Rooms');
   const rows = sheet.getDataRange().getValues();
-  const roomNumStr = String(roomNumber).trim();
 
   for (let i = 1; i < rows.length; i++) {
-    if (String(rows[i][0]).trim() === roomNumStr) {
+    if (String(rows[i][0]).trim() === String(roomNumber).trim()) {
       sheet.deleteRow(i + 1);
-      return createJsonResponse({ success: true, message: 'ลบห้อง ' + roomNumber + ' เรียบร้อย' });
+      return createJsonResponse({ success: true, message: 'ลบห้องพักเรียบร้อย' });
     }
   }
   return createJsonResponse({ success: false, error: 'ไม่พบห้องที่ต้องการลบ' });
@@ -367,15 +412,35 @@ function handleSaveBill(billData) {
   const electricRate = Number(billData.electricRate) || Number(settings.electricRate) || 8;
   const waterRate = Number(billData.waterRate) || Number(settings.waterRate) || 18;
 
-  const prevElec = Number(billData.prevElectricMeter || room.lastElectricMeter || 0);
-  const currElec = Number(billData.currElectricMeter || 0);
-  const elecUnits = Math.max(0, currElec - prevElec);
-  const electricAmount = Math.round(elecUnits * electricRate);
+  let prevElec = Number(billData.prevElectricMeter || room.lastElectricMeter || 0);
+  let currElec = prevElec;
+  let elecUnits = 0;
+  let electricAmount = 0;
 
-  const prevWater = Number(billData.prevWaterMeter || room.lastWaterMeter || 0);
-  const currWater = Number(billData.currWaterMeter || 0);
-  const waterUnits = Math.max(0, currWater - prevWater);
-  const waterAmount = Math.round(waterUnits * waterRate);
+  if (billData.electricMode === 'manual') {
+    electricAmount = Number(billData.electricAmount || 0);
+    currElec = prevElec;
+    elecUnits = 0;
+  } else {
+    currElec = Number(billData.currElectricMeter || 0);
+    elecUnits = Math.max(0, currElec - prevElec);
+    electricAmount = Math.round(elecUnits * electricRate);
+  }
+
+  let prevWater = Number(billData.prevWaterMeter || room.lastWaterMeter || 0);
+  let currWater = prevWater;
+  let waterUnits = 0;
+  let waterAmount = 0;
+
+  if (billData.waterMode === 'manual') {
+    waterAmount = Number(billData.waterAmount || 0);
+    currWater = prevWater;
+    waterUnits = 0;
+  } else {
+    currWater = Number(billData.currWaterMeter || 0);
+    waterUnits = Math.max(0, currWater - prevWater);
+    waterAmount = Math.round(waterUnits * waterRate);
+  }
 
   const rent = Number(billData.rent || room.price || 0);
   const commonFee = Number(billData.commonFee !== undefined ? billData.commonFee : (room.commonFee || 0));
@@ -386,7 +451,7 @@ function handleSaveBill(billData) {
   const discount = Number(billData.discount || 0);
 
   const totalAmount = Math.max(0, rent + electricAmount + waterAmount + commonFee + parkingFee + otherFee - discount);
-  const monthStr = billData.month || new Date().toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+  const monthStr = formatMonthName(billData.month) || new Date().toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
   const billId = billData.id || `BILL-${Date.now().toString().slice(-6)}-${billData.roomNumber}`;
 
   const rowData = [
@@ -401,12 +466,16 @@ function handleSaveBill(billData) {
   billsSheet.insertRowBefore(2);
   billsSheet.getRange(2, 1, 1, rowData.length).setValues([rowData]);
 
-  // Update room last meter readings
+  // Update room last meter readings if meter mode was used
   const roomRows = roomsSheet.getDataRange().getValues();
   for (let i = 1; i < roomRows.length; i++) {
     if (String(roomRows[i][0]).trim() === String(billData.roomNumber).trim()) {
-      roomsSheet.getRange(i + 1, 15).setValue(currElec); // lastElectricMeter
-      roomsSheet.getRange(i + 1, 16).setValue(currWater); // lastWaterMeter
+      if (billData.electricMode !== 'manual') {
+        roomsSheet.getRange(i + 1, 15).setValue(currElec); // lastElectricMeter
+      }
+      if (billData.waterMode !== 'manual') {
+        roomsSheet.getRange(i + 1, 16).setValue(currWater); // lastWaterMeter
+      }
       break;
     }
   }
@@ -434,13 +503,49 @@ function handleDeleteBill(billId) {
   const sheet = ss.getSheetByName('Bills');
   const rows = sheet.getDataRange().getValues();
 
+  let targetRoomNumber = null;
+
   for (let i = 1; i < rows.length; i++) {
     if (String(rows[i][0]).trim() === String(billId).trim()) {
+      targetRoomNumber = String(rows[i][1]).trim();
       sheet.deleteRow(i + 1);
-      return createJsonResponse({ success: true, message: 'ลบบิลเรียบร้อย' });
+      break;
     }
   }
-  return createJsonResponse({ success: false, error: 'ไม่พบบิล' });
+
+  if (!targetRoomNumber) {
+    return createJsonResponse({ success: false, error: 'ไม่พบบิล' });
+  }
+
+  // Recalibrate room meter readings to the next latest remaining bill
+  const roomsSheet = ss.getSheetByName('Rooms');
+  const roomRows = roomsSheet.getDataRange().getValues();
+  const remainingBillRows = sheet.getDataRange().getValues();
+
+  let latestElec = 0;
+  let latestWater = 0;
+  let hasRemainingBill = false;
+
+  for (let i = 1; i < remainingBillRows.length; i++) {
+    if (String(remainingBillRows[i][1]).trim() === targetRoomNumber) {
+      latestElec = Number(remainingBillRows[i][7]) || 0;  // currElectricMeter
+      latestWater = Number(remainingBillRows[i][12]) || 0; // currWaterMeter
+      hasRemainingBill = true;
+      break; // Bills are stored in reverse chronological order
+    }
+  }
+
+  if (hasRemainingBill) {
+    for (let j = 1; j < roomRows.length; j++) {
+      if (String(roomRows[j][0]).trim() === targetRoomNumber) {
+        roomsSheet.getRange(j + 1, 15).setValue(latestElec);
+        roomsSheet.getRange(j + 1, 16).setValue(latestWater);
+        break;
+      }
+    }
+  }
+
+  return createJsonResponse({ success: true, message: 'ลบบิลและคืนค่ายูนิตมิเตอร์ล่าสุดเรียบร้อย' });
 }
 
 function handleSaveSettings(settingsData) {
@@ -448,7 +553,8 @@ function handleSaveSettings(settingsData) {
   const sheet = ss.getSheetByName('Settings');
   const rows = sheet.getDataRange().getValues();
 
-  Object.keys(settingsData).forEach(key => {
+  const keys = Object.keys(settingsData);
+  keys.forEach(key => {
     let found = false;
     for (let i = 1; i < rows.length; i++) {
       if (rows[i][0] === key) {
@@ -474,6 +580,29 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
   const headerColor = isPaid ? '#10b981' : '#2563eb';
   const statusBadgeText = isPaid ? 'ชำระเงินเรียบร้อยแล้ว' : 'รอชำระเงิน';
   const statusBadgeColor = isPaid ? '#059669' : '#dc2626';
+
+  const formattedMonth = formatMonthName(bill.month);
+  const formattedDate = formatThaiDateTime(bill.createdAt);
+  const tenantName = bill.tenantName || 'ผู้เช่าห้องพัก';
+
+  // Build Portal URL with gasUrl parameter so mobile users connect automatically
+  let portalUri = '';
+  if (publicUrl) {
+    let gasUrl = '';
+    try {
+      gasUrl = ScriptApp.getService().getUrl();
+    } catch (e) {}
+    const gasParam = gasUrl ? `&gasUrl=${encodeURIComponent(gasUrl)}` : '';
+    portalUri = `${publicUrl}/tenant-portal.html?billId=${bill.id}${gasParam}`;
+  }
+
+  const elecText = bill.electricUnits > 0
+    ? `2. ค่าไฟ (${bill.electricUnits} หน่วย @ ${bill.electricRate}฿)`
+    : `2. ค่าไฟฟ้า (ราคาเหมา / กำหนดเอง)`;
+
+  const waterText = bill.waterUnits > 0
+    ? `3. ค่าน้ำ (${bill.waterUnits} หน่วย @ ${bill.waterRate}฿)`
+    : `3. ค่าน้ำประปา (ราคาเหมา / กำหนดเอง)`;
 
   const contents = [
     {
@@ -503,7 +632,7 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
           type: "box",
           layout: "horizontal",
           contents: [
-            { type: "text", text: `2. ค่าไฟ (${bill.electricUnits} หน่วย @ ${bill.electricRate}฿)`, size: "xs", color: "#64748b" },
+            { type: "text", text: elecText, size: "xs", color: "#64748b" },
             { type: "text", text: `${Number(bill.electricAmount).toLocaleString()} ฿`, size: "sm", align: "end", weight: "bold" }
           ]
         },
@@ -511,7 +640,7 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
           type: "box",
           layout: "horizontal",
           contents: [
-            { type: "text", text: `3. ค่าน้ำ (${bill.waterUnits} หน่วย @ ${bill.waterRate}฿)`, size: "xs", color: "#64748b" },
+            { type: "text", text: waterText, size: "xs", color: "#64748b" },
             { type: "text", text: `${Number(bill.waterAmount).toLocaleString()} ฿`, size: "sm", align: "end", weight: "bold" }
           ]
         },
@@ -575,8 +704,10 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
       paddingAll: "20px",
       contents: [
         { type: "text", text: dormSettings.dormName || "หอพักสุขสบาย", weight: "bold", color: "#ffffff", size: "lg" },
-        { type: "text", text: `ใบแจ้งหนี้ค่าเช่าห้องพัก - ห้อง ${bill.roomNumber}`, color: "#ffffffcc", size: "sm", margin: "xs" },
-        { type: "text", text: `ประจำรอบ: ${bill.month}`, color: "#ffffffee", size: "xs", margin: "xs" }
+        { type: "text", text: `ใบแจ้งหนี้ห้อง ${bill.roomNumber}`, color: "#ffffff", size: "md", weight: "bold", margin: "xs" },
+        { type: "text", text: `👤 ผู้เช่า: ${tenantName}`, color: "#ffffffee", size: "xs", margin: "xs" },
+        { type: "text", text: `เลขที่บิล: ${bill.id} | ประจำรอบ: ${formattedMonth}`, color: "#ffffffcc", size: "xxs", margin: "xs" },
+        { type: "text", text: `วันที่ออกบิล: ${formattedDate}`, color: "#ffffffcc", size: "xxs" }
       ]
     },
     body: {
@@ -590,14 +721,14 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
       layout: "vertical",
       spacing: "sm",
       contents: [
-        ...(publicUrl ? [{
+        ...(portalUri ? [{
           type: "button",
           style: "primary",
           color: "#2563eb",
           action: {
             type: "uri",
             label: "ดูบิล & สแกน QR ชำระเงิน",
-            uri: `${publicUrl}/tenant-portal.html?billId=${bill.id}`
+            uri: portalUri
           }
         }] : []),
         {
@@ -613,7 +744,7 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
 
   return {
     type: "flex",
-    altText: `ใบแจ้งหนี้ห้อง ${bill.roomNumber} ยอดชำระ ${Number(bill.totalAmount).toLocaleString()} บาท`,
+    altText: `ใบแจ้งหนี้ห้อง ${bill.roomNumber} (${formattedMonth}) ยอดชำระ ${Number(bill.totalAmount).toLocaleString()} บาท`,
     contents: flexContents
   };
 }
@@ -657,6 +788,9 @@ function handleSendLineBill(billId, baseUrl) {
     return createJsonResponse({ success: false, error: `ห้อง ${bill.roomNumber} ยังไม่มี LINE User ID ของผู้เช่า` });
   }
 
+  // Bind tenant name to bill object
+  bill.tenantName = room.tenant.name || bill.tenantName || '';
+
   const flexMsg = buildBillFlexMessage(settings, bill, baseUrl);
   pushLineMessage(token, room.tenant.lineUserId, flexMsg);
 
@@ -696,6 +830,7 @@ function handleBatchSendLine(baseUrl) {
       const room = rooms.find(r => r.number === bill.roomNumber);
       if (room?.tenant?.lineUserId) {
         try {
+          bill.tenantName = room.tenant.name || bill.tenantName || '';
           const flexMsg = buildBillFlexMessage(settings, bill, baseUrl);
           pushLineMessage(token, room.tenant.lineUserId, flexMsg);
 
@@ -802,7 +937,7 @@ function handleLineWebhook(events) {
 
         const pendingBill = bills.find(b => b.roomNumber === matchedRoom.number && b.status !== 'paid');
         if (pendingBill) {
-          successMsg += `\n\n📌 คุณมียอดค้างชำระรอบ ${pendingBill.month}\n💰 ยอดสุทธิ: ${Number(pendingBill.totalAmount).toLocaleString()} บาท`;
+          successMsg += `\n\n📌 คุณมียอดค้างชำระรอบ ${formatMonthName(pendingBill.month)}\n💰 ยอดสุทธิ: ${Number(pendingBill.totalAmount).toLocaleString()} บาท`;
         }
 
         replyMessages.push({ type: 'text', text: successMsg });
@@ -816,7 +951,7 @@ function handleLineWebhook(events) {
           if (pendingBill) {
             replyMessages.push({
               type: 'text',
-              text: `📄 ยอดค้างชำระห้อง ${alreadyBound.number} (${pendingBill.month})\n💰 ยอดสุทธิ: ${Number(pendingBill.totalAmount).toLocaleString()} บาท\n📅 กำหนดชำระ: ${pendingBill.dueDate || 'ตามกำหนด'}`
+              text: `📄 ยอดค้างชำระห้อง ${alreadyBound.number} (${formatMonthName(pendingBill.month)})\n💰 ยอดสุทธิ: ${Number(pendingBill.totalAmount).toLocaleString()} บาท\n📅 กำหนดชำระ: ${pendingBill.dueDate || 'ตามกำหนด'}`
             });
           } else {
             replyMessages.push({
@@ -832,21 +967,22 @@ function handleLineWebhook(events) {
         }
       }
 
-      // Reply using LINE reply API
-      try {
-        const replyUrl = 'https://api.line.me/v2/bot/message/reply';
-        UrlFetchApp.fetch(replyUrl, {
-          method: 'post',
-          contentType: 'application/json',
-          headers: { 'Authorization': 'Bearer ' + token },
-          payload: JSON.stringify({
-            replyToken: replyToken,
-            messages: replyMessages
-          }),
-          muteHttpExceptions: true
-        });
-      } catch (err) {
-        console.error('Reply error:', err);
+      // Reply back via LINE Messaging API
+      if (replyMessages.length > 0 && replyToken) {
+        try {
+          UrlFetchApp.fetch('https://api.line.me/v2/bot/message/reply', {
+            method: 'post',
+            contentType: 'application/json',
+            headers: { 'Authorization': 'Bearer ' + token },
+            payload: JSON.stringify({
+              replyToken: replyToken,
+              messages: replyMessages
+            }),
+            muteHttpExceptions: true
+          });
+        } catch (e) {
+          console.error('Error replying LINE message:', e);
+        }
       }
     }
   }

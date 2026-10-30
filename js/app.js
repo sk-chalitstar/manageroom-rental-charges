@@ -1146,229 +1146,6 @@ async function createBillFromCard(roomNumber) {
   }
 }
 
-  // Table View
-  tbody.innerHTML = occupiedRooms.map(room => {
-    const prevElec = room.lastElectricMeter || 0;
-    const prevWater = room.lastWaterMeter || 0;
-    const rentVal = room.price !== undefined && room.price !== null ? room.price : '';
-    const commonVal = (room.commonFee !== undefined && room.commonFee !== null && room.commonFee !== '') ? room.commonFee : (state.settings.commonFeeDefault || 300);
-    const parkingVal = (room.parkingFee && room.parkingFee > 0) ? room.parkingFee : '';
-    const plateVal = room.licensePlate || '';
-    const otherVal = (room.otherFee && room.otherFee > 0) ? room.otherFee : '';
-    const remarkVal = room.otherFeeRemark || '';
-
-    const initialTotal = Number(rentVal || 0) + Number(commonVal || 0) + Number(parkingVal || 0) + Number(otherVal || 0);
-
-    return `
-      <tr id="meter-row-${room.number}" class="hover:bg-slate-50 transition text-xs">
-        <td class="px-3 py-3">
-          <p class="font-bold text-slate-800 text-sm">ห้อง ${room.number}</p>
-          <p class="text-[11px] text-slate-500">${room.tenant?.name || '—'}</p>
-        </td>
-
-        <td class="px-3 py-3 font-mono text-slate-500 bg-slate-50/50">
-          <input type="number" id="m-prev-elec-${room.number}" value="${prevElec}" readonly class="w-14 bg-transparent border-0 font-mono text-xs">
-        </td>
-        <td class="px-3 py-3">
-          <input type="number" id="m-curr-elec-${room.number}" placeholder="เลขใหม่" oninput="updateMeterRowCalc('${room.number}')" class="w-20 border border-amber-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-amber-500 font-semibold">
-        </td>
-        <td class="px-3 py-3 font-bold text-amber-600" id="m-diff-elec-${room.number}">0 น.</td>
-
-        <td class="px-3 py-3 font-mono text-slate-500 bg-slate-50/50">
-          <input type="number" id="m-prev-water-${room.number}" value="${prevWater}" readonly class="w-14 bg-transparent border-0 font-mono text-xs">
-        </td>
-        <td class="px-3 py-3">
-          <input type="number" id="m-curr-water-${room.number}" placeholder="เลขใหม่" oninput="updateMeterRowCalc('${room.number}')" class="w-20 border border-cyan-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-cyan-500 font-semibold">
-        </td>
-        <td class="px-3 py-3 font-bold text-cyan-600" id="m-diff-water-${room.number}">0 น.</td>
-
-        <td class="px-3 py-3">
-          <input type="number" id="m-rent-${room.number}" value="${rentVal}" placeholder="0" oninput="updateMeterRowCalc('${room.number}')" class="w-20 border border-slate-200 rounded px-1.5 py-1 text-xs">
-        </td>
-        <td class="px-3 py-3">
-          <input type="number" id="m-common-${room.number}" value="${commonVal}" placeholder="0" oninput="updateMeterRowCalc('${room.number}')" class="w-16 border border-slate-200 rounded px-1.5 py-1 text-xs">
-        </td>
-        <td class="px-3 py-3">
-          <input type="number" id="m-parking-${room.number}" value="${parkingVal}" placeholder="0" oninput="updateMeterRowCalc('${room.number}')" class="w-16 border border-slate-200 rounded px-1.5 py-1 text-xs">
-        </td>
-        <td class="px-3 py-3">
-          <input type="text" id="m-plate-${room.number}" value="${plateVal}" placeholder="ทะเบียนรถ" class="w-24 border border-slate-200 rounded px-1.5 py-1 text-xs">
-        </td>
-        <td class="px-3 py-3">
-          <input type="number" id="m-other-${room.number}" value="${otherVal}" placeholder="0" oninput="toggleTableMeterOtherRemark('${room.number}'); updateMeterRowCalc('${room.number}')" class="w-16 border border-slate-200 rounded px-1.5 py-1 text-xs">
-        </td>
-        <td class="px-3 py-3">
-          <input type="text" id="m-remark-${room.number}" value="${remarkVal}" placeholder="ระบุหมายเหตุ" class="w-28 border border-amber-300 rounded px-1.5 py-1 text-xs ${otherVal ? '' : 'hidden'} bg-amber-50/50">
-        </td>
-
-        <td class="px-3 py-3 font-bold text-blue-600 text-sm whitespace-nowrap" id="m-total-${room.number}">
-          ${initialTotal.toLocaleString()} ฿
-        </td>
-
-        <td class="px-3 py-3 text-center">
-          <button onclick="createBillFromMeterRow('${room.number}')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition whitespace-nowrap">
-            สร้างบิล
-          </button>
-        </td>
-      </tr>
-    `;
-  }).join('');
-
-  lucide.createIcons();
-}
-
-function toggleCardMeterOtherRemark(roomNumber) {
-  const fee = Number(document.getElementById(`card-m-other-${roomNumber}`)?.value || 0);
-  const group = document.getElementById(`card-m-remark-group-${roomNumber}`);
-  if (group) {
-    if (fee > 0) group.classList.remove('hidden');
-    else group.classList.add('hidden');
-  }
-}
-
-function toggleTableMeterOtherRemark(roomNumber) {
-  const fee = Number(document.getElementById(`m-other-${roomNumber}`)?.value || 0);
-  const input = document.getElementById(`m-remark-${roomNumber}`);
-  if (input) {
-    if (fee > 0) input.classList.remove('hidden');
-    else input.classList.add('hidden');
-  }
-}
-
-function updateMeterCardCalc(roomNumber) {
-  const room = state.rooms.find(r => String(r.number) === String(roomNumber));
-  if (!room) return;
-
-  const elecRate = Number(state.settings.electricRate || 8);
-  const waterRate = Number(state.settings.waterRate || 18);
-
-  const prevElec = Number(room.lastElectricMeter || 0);
-  const currElecInput = document.getElementById(`card-m-curr-elec-${roomNumber}`)?.value;
-  const currElec = (currElecInput !== '' && currElecInput !== undefined) ? Number(currElecInput) : prevElec;
-  const diffElec = Math.max(0, currElec - prevElec);
-  const elecAmount = Math.round(diffElec * elecRate);
-  const diffElecEl = document.getElementById(`card-m-diff-elec-${roomNumber}`);
-  if (diffElecEl) diffElecEl.innerText = `${diffElec} หน่วย (${elecAmount.toLocaleString()} ฿)`;
-
-  const prevWater = Number(room.lastWaterMeter || 0);
-  const currWaterInput = document.getElementById(`card-m-curr-water-${roomNumber}`)?.value;
-  const currWater = (currWaterInput !== '' && currWaterInput !== undefined) ? Number(currWaterInput) : prevWater;
-  const diffWater = Math.max(0, currWater - prevWater);
-  const waterAmount = Math.round(diffWater * waterRate);
-  const diffWaterEl = document.getElementById(`card-m-diff-water-${roomNumber}`);
-  if (diffWaterEl) diffWaterEl.innerText = `${diffWater} หน่วย (${waterAmount.toLocaleString()} ฿)`;
-
-  const rent = Number(document.getElementById(`card-m-rent-${roomNumber}`)?.value || 0);
-  const common = Number(document.getElementById(`card-m-common-${roomNumber}`)?.value || 0);
-  const parking = Number(document.getElementById(`card-m-parking-${roomNumber}`)?.value || 0);
-  const other = Number(document.getElementById(`card-m-other-${roomNumber}`)?.value || 0);
-
-  const total = rent + common + parking + other + elecAmount + waterAmount;
-  const totalEl = document.getElementById(`card-m-total-${roomNumber}`);
-  if (totalEl) totalEl.innerText = `${total.toLocaleString()} ฿`;
-}
-
-function updateMeterRowCalc(roomNumber) {
-  const room = state.rooms.find(r => String(r.number) === String(roomNumber));
-  if (!room) return;
-
-  const elecRate = Number(state.settings.electricRate || 8);
-  const waterRate = Number(state.settings.waterRate || 18);
-
-  const prevElec = Number(document.getElementById(`m-prev-elec-${roomNumber}`)?.value || room.lastElectricMeter || 0);
-  const currElecInput = document.getElementById(`m-curr-elec-${roomNumber}`)?.value;
-  const currElec = (currElecInput !== '' && currElecInput !== undefined) ? Number(currElecInput) : prevElec;
-  const diffElec = Math.max(0, currElec - prevElec);
-  const elecAmount = Math.round(diffElec * elecRate);
-  const diffElecEl = document.getElementById(`m-diff-elec-${roomNumber}`);
-  if (diffElecEl) diffElecEl.innerText = `${diffElec} น. (${elecAmount}฿)`;
-
-  const prevWater = Number(document.getElementById(`m-prev-water-${roomNumber}`)?.value || room.lastWaterMeter || 0);
-  const currWaterInput = document.getElementById(`m-curr-water-${roomNumber}`)?.value;
-  const currWater = (currWaterInput !== '' && currWaterInput !== undefined) ? Number(currWaterInput) : prevWater;
-  const diffWater = Math.max(0, currWater - prevWater);
-  const waterAmount = Math.round(diffWater * waterRate);
-  const diffWaterEl = document.getElementById(`m-diff-water-${roomNumber}`);
-  if (diffWaterEl) diffWaterEl.innerText = `${diffWater} น. (${waterAmount}฿)`;
-
-  const rent = Number(document.getElementById(`m-rent-${roomNumber}`)?.value || 0);
-  const common = Number(document.getElementById(`m-common-${roomNumber}`)?.value || 0);
-  const parking = Number(document.getElementById(`m-parking-${roomNumber}`)?.value || 0);
-  const other = Number(document.getElementById(`m-other-${roomNumber}`)?.value || 0);
-
-  const total = rent + common + parking + other + elecAmount + waterAmount;
-  const totalEl = document.getElementById(`m-total-${roomNumber}`);
-  if (totalEl) totalEl.innerText = `${total.toLocaleString()} ฿`;
-}
-
-async function createBillFromCard(roomNumber) {
-  const room = state.rooms.find(r => String(r.number) === String(roomNumber));
-  if (!room) return;
-
-  const month = document.getElementById('meterBillingMonth').value;
-  const currElecInput = document.getElementById(`card-m-curr-elec-${roomNumber}`)?.value;
-  const currWaterInput = document.getElementById(`card-m-curr-water-${roomNumber}`)?.value;
-
-  if (currElecInput === '' || currElecInput === undefined) {
-    alert(`กรุณากรอกเลขมิเตอร์ไฟใหม่ของห้อง ${roomNumber}`);
-    document.getElementById(`card-m-curr-elec-${roomNumber}`)?.focus();
-    return;
-  }
-
-  const currElec = Number(currElecInput);
-  const currWater = (currWaterInput !== '' && currWaterInput !== undefined) ? Number(currWaterInput) : (room.lastWaterMeter || 0);
-
-  const rent = Number(document.getElementById(`card-m-rent-${roomNumber}`)?.value || 0);
-  const commonFee = Number(document.getElementById(`card-m-common-${roomNumber}`)?.value || 0);
-  const parkingFee = Number(document.getElementById(`card-m-parking-${roomNumber}`)?.value || 0);
-  const licensePlate = document.getElementById(`card-m-plate-${roomNumber}`)?.value.trim() || '';
-  const otherFee = Number(document.getElementById(`card-m-other-${roomNumber}`)?.value || 0);
-  const otherFeeRemark = document.getElementById(`card-m-remark-${roomNumber}`)?.value.trim() || '';
-
-  const billPayload = {
-    roomNumber: room.number, month, rent,
-    prevElectricMeter: room.lastElectricMeter || 0, currElectricMeter: currElec,
-    prevWaterMeter: room.lastWaterMeter || 0, currWaterMeter: currWater,
-    commonFee, parkingFee, licensePlate, otherFee, otherFeeRemark,
-    electricRate: state.settings.electricRate || 8, waterRate: state.settings.waterRate || 18
-  };
-
-  try {
-    showLoading(true);
-    if (CONFIG.getScriptUrl()) {
-      const res = await apiCall('saveBill', { data: billPayload });
-      if (!res.success) throw new Error(res.error);
-    }
-    
-    // Update local state
-    room.lastElectricMeter = currElec;
-    room.lastWaterMeter = currWater;
-    
-    // Prepend mock bill locally
-    const newBill = {
-      ...billPayload,
-      id: `BILL-${Date.now().toString().slice(-6)}-${room.number}`,
-      electricUnits: Math.max(0, currElec - (room.lastElectricMeter || 0)),
-      electricAmount: Math.round(Math.max(0, currElec - (room.lastElectricMeter || 0)) * (state.settings.electricRate || 8)),
-      waterUnits: Math.max(0, currWater - (room.lastWaterMeter || 0)),
-      waterAmount: Math.round(Math.max(0, currWater - (room.lastWaterMeter || 0)) * (state.settings.waterRate || 18)),
-      totalAmount: rent + commonFee + parkingFee + otherFee + Math.round(Math.max(0, currElec - (room.lastElectricMeter || 0)) * (state.settings.electricRate || 8)) + Math.round(Math.max(0, currWater - (room.lastWaterMeter || 0)) * (state.settings.waterRate || 18)),
-      status: 'pending', lineSent: false
-    };
-    state.bills.unshift(newBill);
-
-    alert(`สร้างบิลห้อง ${roomNumber} เรียบร้อยแล้ว!`);
-    renderBills();
-    renderMeter();
-    loadDashboard();
-    switchTab('bills');
-  } catch (err) {
-    alert(`เกิดข้อผิดพลาด: ${err.message}`);
-  } finally {
-    showLoading(false);
-  }
-}
-
 async function createBillFromMeterRow(roomNumber) {
   const room = state.rooms.find(r => String(r.number) === String(roomNumber));
   if (!room) return;
@@ -1376,6 +1153,9 @@ async function createBillFromMeterRow(roomNumber) {
   const month = document.getElementById('meterBillingMonth').value;
   const currElecInput = document.getElementById(`m-curr-elec-${roomNumber}`)?.value;
   const currWaterInput = document.getElementById(`m-curr-water-${roomNumber}`)?.value;
+  const latestMeters = getRoomLatestMeters(roomNumber);
+  const prevElec = latestMeters.elec;
+  const prevWater = latestMeters.water;
 
   if (currElecInput === '' || currElecInput === undefined) {
     alert(`กรุณากรอกเลขมิเตอร์ไฟใหม่ของห้อง ${roomNumber}`);
@@ -1384,7 +1164,7 @@ async function createBillFromMeterRow(roomNumber) {
   }
 
   const currElec = Number(currElecInput);
-  const currWater = (currWaterInput !== '' && currWaterInput !== undefined) ? Number(currWaterInput) : (room.lastWaterMeter || 0);
+  const currWater = (currWaterInput !== '' && currWaterInput !== undefined) ? Number(currWaterInput) : prevWater;
 
   const rent = Number(document.getElementById(`m-rent-${roomNumber}`)?.value || 0);
   const commonFee = Number(document.getElementById(`m-common-${roomNumber}`)?.value || 0);
@@ -1393,12 +1173,31 @@ async function createBillFromMeterRow(roomNumber) {
   const otherFee = Number(document.getElementById(`m-other-${roomNumber}`)?.value || 0);
   const otherFeeRemark = document.getElementById(`m-remark-${roomNumber}`)?.value.trim() || '';
 
+  const elecRate = Number(state.settings.electricRate || 8);
+  const waterRate = Number(state.settings.waterRate || 18);
+  const elecAmount = Math.round(Math.max(0, currElec - prevElec) * elecRate);
+  const waterAmount = Math.round(Math.max(0, currWater - prevWater) * waterRate);
+
   const billPayload = {
-    roomNumber: room.number, month, rent,
-    prevElectricMeter: room.lastElectricMeter || 0, currElectricMeter: currElec,
-    prevWaterMeter: room.lastWaterMeter || 0, currWaterMeter: currWater,
-    commonFee, parkingFee, licensePlate, otherFee, otherFeeRemark,
-    electricRate: state.settings.electricRate || 8, waterRate: state.settings.waterRate || 18
+    roomNumber: room.number,
+    tenantName: room.tenant?.name || '',
+    month,
+    rent,
+    electricMode: 'meter',
+    prevElectricMeter: prevElec,
+    currElectricMeter: currElec,
+    electricRate: elecRate,
+    electricAmount: elecAmount,
+    waterMode: 'meter',
+    prevWaterMeter: prevWater,
+    currWaterMeter: currWater,
+    waterRate: waterRate,
+    waterAmount: waterAmount,
+    commonFee,
+    parkingFee,
+    licensePlate,
+    otherFee,
+    otherFeeRemark
   };
 
   try {

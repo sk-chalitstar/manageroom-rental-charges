@@ -264,7 +264,13 @@
               qrUrl = `https://promptpay.io/${ppId}/${bill.totalAmount}.png`;
             }
 
-            document.getElementById('promptpayQrImg').src = qrUrl;
+            const imgEl = document.getElementById('promptpayQrImg');
+            imgEl.src = qrUrl;
+            imgEl.onerror = function() {
+              if (imgEl.src !== `https://promptpay.io/${ppId}/${bill.totalAmount}.png`) {
+                imgEl.src = `https://promptpay.io/${ppId}/${bill.totalAmount}.png`;
+              }
+            };
             document.getElementById('promptpayAccountName').innerText = `ชื่อบัญชี: ${ppName}`;
             document.getElementById('promptpayTargetId').innerText = `เบอร์/เลขพร้อมเพย์: ${ppId}`;
           } else {
