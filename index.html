@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบจัดการห้องพัก & ส่งบิลอัตโนมัติผ่าน LINE</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts Prompt -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: 'Prompt', sans-serif; }
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col md:flex-row">
+
+  <!-- Global Loading Indicator -->
+  <div id="globalLoadingBar" style="display: none;" class="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 animate-pulse"></div>
+
+  <!-- Sidebar Navigation -->
+  <aside class="w-full md:w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col justify-between">
+    <div>
+      <!-- Brand -->
+      <div class="p-5 border-b border-slate-800 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+          <i data-lucide="building-2" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-base tracking-tight" id="sidebarDormName">หอพักสุขสบาย</h1>
+          <p class="text-xs text-slate-400">ระบบหอพัก & Google Sheets</p>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="p-3 space-y-1">
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition bg-blue-600 text-white">
+          <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+          ภาพรวม (Dashboard)
+        </button>
+        <button onclick="switchTab('rooms')" id="nav-rooms" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+          <i data-lucide="door-open" class="w-5 h-5"></i>
+          จัดการห้องพัก & ผู้เช่า
+        </button>
+        <button onclick="switchTab('meter')" id="nav-meter" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+          <i data-lucide="gauge" class="w-5 h-5"></i>
+          จดมิเตอร์น้ำ - ไฟ
+        </button>
+        <button onclick="switchTab('bills')" id="nav-bills" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+          <i data-lucide="receipt" class="w-5 h-5"></i>
+          ออกบิล & ส่ง LINE
+        </button>
+        <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+          ตั้งค่าหอพัก & ฐานข้อมูล
+        </button>
+      </nav>
+    </div>
+
+    <!-- Quick Status Info -->
+    <div class="p-4 m-3 bg-slate-800/80 rounded-xl border border-slate-700/60 text-xs text-slate-300 space-y-2">
+      <div class="flex items-center justify-between">
+        <div id="sheetStatusBadge" class="flex items-center gap-1.5 font-medium text-emerald-400">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          เชื่อมต่อ Google Sheets แล้ว
+        </div>
+      </div>
+      <p class="text-slate-400 leading-relaxed text-[11px]">ข้อมูลถูกบันทึกลงตาราง Google Sheets อัตโนมัติ ปลอดภัย ฟรี 100%</p>
+    </div>
+  </aside>
+
+  <!-- Main Content Body -->
+  <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+    <!-- Top Header -->
+    <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h2 id="pageTitle" class="text-xl font-bold text-slate-800">ภาพรวมหอพัก</h2>
+        <p id="pageSubtitle" class="text-xs text-slate-500">สถิติห้องพัก ยอดค้างชำระ และข้อมูลล่าสุด</p>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div class="flex items-center gap-2">
+        <button onclick="switchTab('meter')" class="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-semibold transition">
+          <i data-lucide="edit-3" class="w-4 h-4"></i>
+          จดมิเตอร์รอบนี้
+        </button>
+        <button onclick="batchSendLineBills()" class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-xs font-semibold shadow-sm transition">
+          <i data-lucide="send" class="w-4 h-4"></i>
+          ส่งบิล LINE ทุกห้อง
+        </button>
+      </div>
+    </header>
+
+    <!-- Top Connection Notice Banner (Shows if not configured) -->
+    <div id="sheetConnectionBanner" class="hidden bg-amber-500 text-white px-6 py-3 text-xs flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        <span>ระบบกำลังทำงานด้วยข้อมูลตัวอย่าง กรุณาระบุ <strong>Google Apps Script Web App URL</strong> ในเมนูตั้งค่า เพื่อเชื่อมต่อ Google Sheet ของคุณ <span id="sheetBannerError"></span></span>
+      </div>
+      <button onclick="switchTab('settings')" class="underline font-bold hover:text-amber-100">ไปที่ตั้งค่า ➔</button>
+    </div>
+
+    <!-- Content Sections -->
+    <div class="p-6 space-y-6">
+
+      <!-- ================= 1. TAB: DASHBOARD ================= -->
+      <section id="tab-dashboard" class="space-y-6">
+        <!-- Stat Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Total Rooms -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p class="text-xs font-medium text-slate-500">ห้องพักทั้งหมด</p>
+              <h3 class="text-2xl font-bold text-slate-800 mt-1" id="statTotalRooms">0 ห้อง</h3>
+              <p class="text-xs text-emerald-600 font-medium mt-1" id="statOccupancyRate">มีผู้เช่า 0%</p>
+            </div>
+            <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+              <i data-lucide="home" class="w-6 h-6"></i>
+            </div>
+          </div>
+
+          <!-- Occupied Rooms -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p class="text-xs font-medium text-slate-500">ห้องที่มีผู้เช่า</p>
+              <h3 class="text-2xl font-bold text-emerald-600 mt-1" id="statOccupiedRooms">0 ห้อง</h3>
+              <p class="text-xs text-slate-400 mt-1">ห้องว่าง: <span id="statVacantRooms" class="font-semibold text-slate-700">0</span></p>
+            </div>
+            <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+              <i data-lucide="users" class="w-6 h-6"></i>
+            </div>
+          </div>
+
+          <!-- Pending Payments -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p class="text-xs font-medium text-slate-500">ยอดรอชำระ (บิลค้างจ่าย)</p>
+              <h3 class="text-2xl font-bold text-rose-600 mt-1" id="statPendingAmount">0 ฿</h3>
+              <p class="text-xs text-rose-500 font-medium mt-1"><span id="statPendingCount">0</span> รายการที่รอชำระ</p>
+            </div>
+            <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center">
+              <i data-lucide="clock" class="w-6 h-6"></i>
+            </div>
+          </div>
+
+          <!-- Paid Revenue -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p class="text-xs font-medium text-slate-500">รายรับที่ชำระแล้ว</p>
+              <h3 class="text-2xl font-bold text-indigo-600 mt-1" id="statPaidAmount">0 ฿</h3>
+              <p class="text-xs text-slate-400 mt-1" id="statMonthLabel">ประจำเดือนนี้</p>
+            </div>
+            <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+              <i data-lucide="wallet" class="w-6 h-6"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Room Overview Grid -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+              <i data-lucide="layout-grid" class="w-5 h-5 text-blue-600"></i>
+              ผังห้องพักและสถานะปัจจุบัน
+            </h3>
+            <div class="flex items-center gap-3 text-xs">
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> มีผู้เช่า</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-slate-300"></span> ห้องว่าง</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-400"></span> ซ่อมบำรุง</span>
+            </div>
+          </div>
+          <div id="quickRoomGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2. TAB: ROOMS ================= -->
+      <section id="tab-rooms" class="space-y-6 hidden">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center gap-2">
+            <input type="text" id="roomSearchInput" oninput="renderRooms()" placeholder="ค้นหาเลขห้อง หรือชื่อผู้เช่า..." class="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-blue-500 w-60 bg-white">
+            <select id="roomStatusFilter" onchange="renderRooms()" class="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-blue-500">
+              <option value="all">สถานะทั้งหมด</option>
+              <option value="occupied">มีผู้เช่า (Occupied)</option>
+              <option value="vacant">ห้องว่าง (Vacant)</option>
+              <option value="maintenance">ซ่อมบำรุง (Maintenance)</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- View Mode Toggle -->
+            <div class="flex items-center bg-slate-200/80 p-1 rounded-xl text-xs">
+              <button type="button" onclick="setRoomViewMode('card')" id="btnRoomViewCard" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition bg-white text-blue-600 shadow-sm">
+                <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                แบบการ์ด
+              </button>
+              <button type="button" onclick="setRoomViewMode('table')" id="btnRoomViewTable" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition text-slate-600 hover:text-slate-900">
+                <i data-lucide="table" class="w-4 h-4"></i>
+                แบบตาราง/คอลัมน์
+              </button>
+            </div>
+
+            <button onclick="openAddRoomModal()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              เพิ่มห้องพักใหม่
+            </button>
+          </div>
+        </div>
+
+        <!-- Rooms Table View -->
+        <div id="roomsTableContainer" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
+                <tr>
+                  <th class="px-5 py-4">ห้อง</th>
+                  <th class="px-5 py-4">ประเภท/ชั้น</th>
+                  <th class="px-5 py-4">ค่าเช่าห้อง</th>
+                  <th class="px-5 py-4">ค่าส่วนกลาง</th>
+                  <th class="px-5 py-4">ที่จอดรถ/ทะเบียน</th>
+                  <th class="px-5 py-4">ค่าอื่นๆ</th>
+                  <th class="px-5 py-4">สถานะ</th>
+                  <th class="px-5 py-4">ผู้เช่า/เบอร์</th>
+                  <th class="px-5 py-4">LINE ID</th>
+                  <th class="px-5 py-4 text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="roomsTableBody" class="divide-y divide-slate-100">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Rooms Card View -->
+        <div id="roomsCardContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Rendered by JS -->
+        </div>
+      </section>
+
+      <!-- ================= 3. TAB: METER RECORDING ================= -->
+      <section id="tab-meter" class="space-y-6 hidden">
+        <div class="bg-blue-50 border border-blue-200 rounded-2xl p-5 flex items-start gap-4">
+          <div class="p-2 bg-blue-600 text-white rounded-lg">
+            <i data-lucide="info" class="w-5 h-5"></i>
+          </div>
+          <div class="text-sm text-blue-900">
+            <h4 class="font-bold">ระบบจดมิเตอร์น้ำ - ไฟ และคำนวณบิลอัตโนมัติ</h4>
+            <p class="text-blue-700 mt-1">ดึงเลขมิเตอร์รอบก่อนหน้ามาแสดงอัตโนมัติ กรอกเลขมิเตอร์รอบใหม่ ระบบจะคำนวณหน่วยและรวมค่าส่วนกลาง ค่าที่จอดรถ ค่าอื่นๆ จากข้อมูลห้องพักให้อัตโนมัติในคลิกเดียว</p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <h3 class="font-bold text-slate-800 text-base">บันทึกมิเตอร์รอบปัจจุบัน</h3>
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-slate-500 font-medium">รอบบิลประจำเดือน:</label>
+                <input type="text" id="meterBillingMonth" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs bg-slate-50 font-semibold" value="">
+              </div>
+            </div>
+
+            <!-- Meter View Mode Toggle (Card vs Table) -->
+            <div class="flex items-center bg-slate-200/80 p-1 rounded-xl text-xs">
+              <button type="button" onclick="setMeterViewMode('card')" id="btnMeterViewCard" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition bg-white text-blue-600 shadow-sm">
+                <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                แบบการ์ด
+              </button>
+              <button type="button" onclick="setMeterViewMode('table')" id="btnMeterViewTable" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition text-slate-600 hover:text-slate-900">
+                <i data-lucide="table" class="w-4 h-4"></i>
+                แบบตาราง/คอลัมน์
+              </button>
+            </div>
+          </div>
+
+          <!-- Meter Card View (Matches User Requirement) -->
+          <div id="meterCardContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <!-- Rendered by JS -->
+          </div>
+
+          <!-- Meter Table View -->
+          <div id="meterTableContainer" class="hidden overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-50 text-slate-700 text-xs font-semibold uppercase border-b border-slate-200">
+                <tr>
+                  <th class="px-3 py-3">ห้อง / ผู้เช่า</th>
+                  <th class="px-3 py-3">มิเตอร์ไฟเดิม</th>
+                  <th class="px-3 py-3">มิเตอร์ไฟใหม่</th>
+                  <th class="px-3 py-3">หน่วยไฟ</th>
+                  <th class="px-3 py-3">มิเตอร์น้ำเดิม</th>
+                  <th class="px-3 py-3">มิเตอร์น้ำใหม่</th>
+                  <th class="px-3 py-3">หน่วยน้ำ</th>
+                  <th class="px-3 py-3">ค่าห้อง</th>
+                  <th class="px-3 py-3">ส่วนกลาง</th>
+                  <th class="px-3 py-3">ที่จอดรถ</th>
+                  <th class="px-3 py-3">ทะเบียนรถ</th>
+                  <th class="px-3 py-3">ค่าอื่นๆ</th>
+                  <th class="px-3 py-3">หมายเหตุค่าอื่นๆ</th>
+                  <th class="px-3 py-3">ยอดรวมสุทธิ</th>
+                  <th class="px-3 py-3 text-center">สร้างบิล</th>
+                </tr>
+              </thead>
+              <tbody id="meterEntryTableBody" class="divide-y divide-slate-100">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 4. TAB: BILLS ================= -->
+      <section id="tab-bills" class="space-y-6 hidden">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center gap-2">
+            <input type="text" id="billSearchInput" oninput="renderBills()" placeholder="ค้นหาเลขห้อง หรือรอบบิล..." class="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-blue-500 w-60 bg-white">
+            <select id="billStatusFilter" onchange="renderBills()" class="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-blue-500">
+              <option value="all">สถานะทั้งหมด</option>
+              <option value="pending">รอชำระเงิน (Pending)</option>
+              <option value="paid">ชำระแล้ว (Paid)</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- Bills View Mode Toggle -->
+            <div class="flex items-center bg-slate-200/80 p-1 rounded-xl text-xs">
+              <button type="button" onclick="setBillViewMode('table')" id="btnBillViewTable" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition bg-white text-blue-600 shadow-sm">
+                <i data-lucide="table" class="w-4 h-4"></i>
+                แบบตาราง/คอลัมน์
+              </button>
+              <button type="button" onclick="setBillViewMode('card')" id="btnBillViewCard" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition text-slate-600 hover:text-slate-900">
+                <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                แบบการ์ด
+              </button>
+            </div>
+
+            <button onclick="openCreateBillModal()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm">
+              <i data-lucide="file-plus" class="w-4 h-4"></i>
+              ออกบิลใหม่
+            </button>
+            <button onclick="batchSendLineBills()" class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition shadow-sm">
+              <i data-lucide="send" class="w-4 h-4"></i>
+              ส่ง LINE บิลทั้งหมดที่รอชำระ
+            </button>
+          </div>
+        </div>
+
+        <!-- Bills Table View -->
+        <div id="billsTableContainer" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
+                <tr>
+                  <th class="px-4 py-4">เลขที่บิล / รอบบิล</th>
+                  <th class="px-4 py-4">ห้อง</th>
+                  <th class="px-4 py-4">ค่าห้อง</th>
+                  <th class="px-4 py-4">ค่าไฟ (หน่วย)</th>
+                  <th class="px-4 py-4">ค่าน้ำ (หน่วย)</th>
+                  <th class="px-4 py-4">ส่วนกลาง</th>
+                  <th class="px-4 py-4">ที่จอดรถ (ทะเบียน)</th>
+                  <th class="px-4 py-4">ค่าอื่นๆ</th>
+                  <th class="px-4 py-4">ยอดรวมสุทธิ</th>
+                  <th class="px-4 py-4">สถานะบิล</th>
+                  <th class="px-4 py-4">LINE</th>
+                  <th class="px-4 py-4 text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="billsTableBody" class="divide-y divide-slate-100">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Bills Card View -->
+        <div id="billsCardContainer" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Rendered by JS -->
+        </div>
+      </section>
+
+      <!-- ================= 5. TAB: SETTINGS ================= -->
+      <section id="tab-settings" class="space-y-6 hidden">
+        <form id="settingsForm" onsubmit="saveSettings(event)" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6 max-w-4xl">
+          
+          <!-- Google Sheets Database Connection -->
+          <div>
+            <h3 class="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <i data-lucide="database" class="w-5 h-5 text-emerald-600"></i>
+              เชื่อมต่อฐานข้อมูล Google Sheets
+            </h3>
+            <p class="text-xs text-slate-500 mt-1">ใช้ Google Sheets เป็นฐานข้อมูลเก็บข้อมูลห้องพัก บิล และตั้งค่าทั้งหมดแบบ Real-time</p>
+
+            <div class="mt-4 space-y-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Google Apps Script Web App URL *</label>
+                <div class="flex gap-2">
+                  <input type="url" id="settingGoogleScriptUrl" placeholder="https://script.google.com/macros/s/AKfycb.../exec" class="flex-1 border border-slate-200 rounded-lg p-2.5 text-xs font-mono focus:outline-emerald-500 bg-slate-50">
+                  <button type="button" onclick="testGoogleSheetConnection()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+                    <i data-lucide="zap" class="w-4 h-4"></i>
+                    ทดสอบเชื่อมต่อ
+                  </button>
+                </div>
+                <div id="sheetTestResultMsg" class="mt-2 text-xs"></div>
+              </div>
+
+              <!-- Setup Helper Box -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-600 space-y-2">
+                <p class="font-bold text-slate-800 flex items-center gap-1.5">
+                  <i data-lucide="book-open" class="w-4 h-4 text-blue-600"></i>
+                  วิธีสร้าง Google Sheets & นำ Web App URL มาใส่ (ทำเพียงครั้งเดียว):
+                </p>
+                <ol class="list-decimal list-inside space-y-1 leading-relaxed">
+                  <li>เปิด Google Sheets ใหม่ที่ <a href="https://sheets.new" target="_blank" class="text-blue-600 underline font-semibold">sheets.new</a></li>
+                  <li>คลิกเมนู <strong>ส่วนขยาย (Extensions)</strong> ➔ <strong>Apps Script</strong></li>
+                  <li>ลบโค้ดเดิมทั้งหมด แล้วคัดลอกโค้ดจากไฟล์ <code>google-apps-script.js</code> ไปวางทั้งหมด</li>
+                  <li>กด <strong>ทำให้ใช้งานได้ (Deploy)</strong> ➔ <strong>การทำให้ใช้งานได้ใหม่ (New deployment)</strong></li>
+                  <li>เลือกประเภทเป็น <strong>เว็บแอป (Web app)</strong> ➔ เลือก <strong>ผู้ที่มีสิทธิ์เข้าถึง (Who has access): ทุกคน (Anyone)</strong> ➔ กด Deploy</li>
+                  <li>คัดลอก <strong>URL เว็บแอป (Web App URL)</strong> มาวางลงในช่องด้านบนนี้</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+
+          <h3 class="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3 pt-4 flex items-center gap-2">
+            <i data-lucide="sliders" class="w-5 h-5 text-blue-600"></i>
+            ตั้งค่าข้อมูลหอพัก & อัตราค่าน้ำ-ไฟ
+          </h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อหอพัก / อพาร์ตเมนต์</label>
+              <input type="text" id="settingDormName" required class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:outline-blue-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">เบอร์โทรศัพท์ติดต่อ</label>
+              <input type="text" id="settingDormPhone" required class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:outline-blue-500">
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">ที่อยู่หอพัก</label>
+              <input type="text" id="settingDormAddress" required class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:outline-blue-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">อัตราค่าไฟฟ้า (บาท / หน่วย)</label>
+              <input type="number" step="0.5" id="settingElectricRate" required class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:outline-blue-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">อัตราค่าน้ำประปา (บาท / หน่วย)</label>
+              <input type="number" step="0.5" id="settingWaterRate" required class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:outline-blue-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">ค่าส่วนกลางเริ่มต้น (บาท / เดือน)</label>
+              <input type="number" id="settingCommonFee" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:outline-blue-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">เบอร์พร้อมเพย์ หรือเลขบัตร ปชช. (รับเงิน)</label>
+              <input type="text" id="settingPromptpayId" placeholder="เช่น 0812345678" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:outline-blue-500">
+              <p class="text-[11px] text-slate-400 mt-1">ใช้สำหรับสร้าง QR Code พร้อมเพย์ให้ผู้เช่าสแกนจ่ายเงินอัตโนมัติ</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อบัญชีพร้อมเพย์ (ผู้รับเงิน)</label>
+              <input type="text" id="settingPromptpayName" placeholder="เช่น นายสมชาย สุขสบาย" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:outline-blue-500">
+            </div>
+          </div>
+
+          <h3 class="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3 pt-4 flex items-center gap-2">
+            <i data-lucide="message-square" class="w-5 h-5 text-emerald-600"></i>
+            ตั้งค่า LINE Messaging API (ส่งบิลอัตโนมัติ)
+          </h3>
+
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">LINE Channel Access Token (Long-lived)</label>
+              <textarea id="settingLineToken" rows="3" placeholder="วาง Channel Access Token ที่ได้จาก LINE Developers Console ที่นี่..." class="w-full border border-slate-200 rounded-lg p-2.5 text-xs font-mono focus:outline-emerald-500"></textarea>
+            </div>
+            
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-600 space-y-2">
+              <p class="font-bold text-slate-800">💡 การตั้งค่า LINE Official Account ให้ผู้เช่าแอดแล้วบอทตอบทันที:</p>
+              <ol class="list-decimal list-inside space-y-1">
+                <li>เข้าไปที่ <a href="https://manager.line.biz" target="_blank" class="text-blue-600 underline font-medium">manager.line.biz</a> ➔ การตั้งค่า ➔ <strong>การตั้งค่าการตอบกลับ (Response settings)</strong></li>
+                <li>โหมดตอบกลับ: เลือก <strong>บอท (Bot)</strong></li>
+                <li><strong>ข้อความตอบกลับอัตโนมัติ (Auto-response messages): ให้กด "ปิด (Disabled)"</strong> (เพื่อไม่ให้มีข้อความ 'ไม่สามารถตอบข้อความใดๆ ได้' มาขัดขวาง)</li>
+                <li>ไปที่ <a href="https://developers.line.biz" target="_blank" class="text-blue-600 underline font-medium">developers.line.biz</a> ➔ แท็บ Messaging API ➔ <strong>Webhook URL ให้ใส่ Google Apps Script Web App URL</strong> และเปิด <strong>Use Webhook</strong></li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="pt-4 flex justify-end">
+            <button type="submit" class="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm shadow-sm transition">
+              <i data-lucide="check" class="w-4 h-4"></i>
+              บันทึกการตั้งค่า
+            </button>
+          </div>
+        </form>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- 1. Room Modal (Add/Edit) -->
+  <div id="roomModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 id="roomModalTitle" class="font-bold text-slate-800 text-base">เพิ่มห้องพักใหม่</h3>
+        <button onclick="closeRoomModal()" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="roomForm" onsubmit="saveRoomForm(event)" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">เลขห้องพัก *</label>
+            <input type="text" id="formRoomNumber" required placeholder="เช่น 101" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ชั้น</label>
+            <input type="number" id="formRoomFloor" value="1" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ประเภทห้อง</label>
+            <input type="text" id="formRoomType" placeholder="เช่น แอร์, พัดลม" value="แอร์" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ค่าเช่ารายเดือน (บาท) *</label>
+            <input type="number" id="formRoomPrice" required placeholder="4500" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-blue-500">
+          </div>
+        </div>
+
+        <!-- Additional Room Charges (Common fee, Parking, License Plate, Others) -->
+        <div class="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-3">
+          <p class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <i data-lucide="calculator" class="w-4 h-4 text-indigo-600"></i>
+            ค่าใช้จ่ายประจำห้องพัก (สำหรับคิดบิลอัตโนมัติ)
+          </p>
+
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">ค่าส่วนกลาง (บาท)</label>
+              <input type="number" id="formRoomCommonFee" value="300" class="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-blue-500 bg-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">ค่าที่จอดรถ (บาท)</label>
+              <input type="number" id="formRoomParkingFee" value="0" class="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-blue-500 bg-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">ทะเบียนรถ (ถ้ามี)</label>
+              <input type="text" id="formRoomLicensePlate" placeholder="1กข-9999 กทม." class="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-blue-500 bg-white">
+            </div>
+          </div>
+
+          <!-- Other fee with dynamic remark toggle -->
+          <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/80">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">ค่าอื่นๆ (บาท)</label>
+              <input type="number" id="formRoomOtherFee" value="0" oninput="toggleRoomOtherRemark()" placeholder="0" class="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-blue-500 bg-white">
+            </div>
+            <div id="roomOtherRemarkGroup" class="hidden">
+              <label class="block text-[11px] font-semibold text-amber-700 mb-1">ระบุหมายเหตุค่าอื่นๆ *</label>
+              <input type="text" id="formRoomOtherRemark" placeholder="เช่น ค่าเช่าตู้เย็น, ค่าคีย์การ์ด" class="w-full border border-amber-300 rounded-lg p-2 text-xs focus:outline-amber-500 bg-amber-50/50">
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">สถานะห้อง</label>
+          <select id="formRoomStatus" onchange="toggleTenantFields()" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-blue-500">
+            <option value="occupied">มีผู้เช่า (Occupied)</option>
+            <option value="vacant">ห้องว่าง (Vacant)</option>
+            <option value="maintenance">กำลังซ่อมบำรุง (Maintenance)</option>
+          </select>
+        </div>
+
+        <!-- Tenant Details Section -->
+        <div id="tenantFields" class="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-3">
+          <p class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <i data-lucide="user" class="w-4 h-4 text-blue-600"></i>
+            ข้อมูลผู้เช่า
+          </p>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">ชื่อ-นามสกุล ผู้เช่า</label>
+              <input type="text" id="formTenantName" placeholder="นายสมชาย ใจดี" class="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-blue-500 bg-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">เบอร์โทรศัพท์</label>
+              <input type="text" id="formTenantPhone" placeholder="081-234-5678" class="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-blue-500 bg-white">
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600">LINE User ID (สำหรับรับบิลเข้า LINE)</label>
+            <input type="text" id="formTenantLineId" placeholder="เช่น U1234567890abcdef..." class="w-full border border-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-blue-500 bg-white">
+            <p class="text-[10px] text-slate-400 mt-1">ผู้เช่าสามารถทักเลขห้อง หรือชื่อใน LINE บอทจะผูกให้อัตโนมัติ</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-1">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">เลขมิเตอร์ไฟล่าสุด</label>
+            <input type="number" id="formLastElecMeter" value="0" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">เลขมิเตอร์น้ำล่าสุด</label>
+            <input type="number" id="formLastWaterMeter" value="0" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-blue-500">
+          </div>
+        </div>
+
+        <div class="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+          <button type="button" onclick="closeRoomModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-xs font-medium hover:bg-slate-50">ยกเลิก</button>
+          <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold">บันทึกข้อมูล</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Create Bill Modal -->
+  <div id="billModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-800 text-base">ออกบิลใบแจ้งหนี้ใหม่</h3>
+        <button onclick="closeBillModal()" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="billForm" onsubmit="saveBillForm(event)" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">เลือกห้องพัก *</label>
+            <select id="formBillRoomNumber" onchange="onBillRoomSelect()" required class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-blue-500">
+              <!-- Populated by JS -->
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">รอบบิลประจำเดือน *</label>
+            <input type="text" id="formBillMonth" required class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-blue-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ค่าเช่าห้อง (บาท) *</label>
+            <input type="number" id="formBillRent" required oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ค่าส่วนกลาง (บาท)</label>
+            <input type="number" id="formBillCommonFee" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-blue-500">
+          </div>
+        </div>
+
+        <!-- Electricity -->
+        <div class="border border-slate-200 rounded-xl p-3 bg-amber-50/50 space-y-2">
+          <p class="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+            <i data-lucide="zap" class="w-4 h-4 text-amber-600"></i>
+            ค่าไฟฟ้า (อัตรา <span id="rateLabelElec">8</span> บ./หน่วย)
+          </p>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="text-[10px] text-slate-500">มิเตอร์เดิม</label>
+              <input type="number" id="formBillPrevElec" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white">
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-500">มิเตอร์ใหม่</label>
+              <input type="number" id="formBillCurrElec" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white">
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-500">คำนวณเงิน</label>
+              <div id="calcElecAmount" class="font-bold text-slate-700 text-sm py-1">0 ฿</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Water -->
+        <div class="border border-slate-200 rounded-xl p-3 bg-cyan-50/50 space-y-2">
+          <p class="text-xs font-bold text-cyan-800 flex items-center gap-1.5">
+            <i data-lucide="droplet" class="w-4 h-4 text-cyan-600"></i>
+            ค่าน้ำประปา (อัตรา <span id="rateLabelWater">18</span> บ./หน่วย)
+          </p>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="text-[10px] text-slate-500">มิเตอร์เดิม</label>
+              <input type="number" id="formBillPrevWater" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white">
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-500">มิเตอร์ใหม่</label>
+              <input type="number" id="formBillCurrWater" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white">
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-500">คำนวณเงิน</label>
+              <div id="calcWaterAmount" class="font-bold text-slate-700 text-sm py-1">0 ฿</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Parking & License Plate -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ค่าที่จอดรถ (บาท)</label>
+            <input type="number" id="formBillParkingFee" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ทะเบียนรถ</label>
+            <input type="text" id="formBillLicensePlate" placeholder="1กข-9999 กทม." class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-blue-500">
+          </div>
+        </div>
+
+        <!-- Other fee & dynamic remark -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ค่าใช้จ่ายอื่นๆ (ถ้ามี)</label>
+            <input type="number" id="formBillOtherFee" value="0" oninput="toggleBillOtherRemark(); calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-blue-500">
+          </div>
+          <div id="billOtherRemarkGroup" class="hidden">
+            <label class="block text-xs font-semibold text-amber-700 mb-1">หมายเหตุค่าใช้จ่ายอื่นๆ *</label>
+            <input type="text" id="formBillOtherRemark" placeholder="ระบุเหตุผล เช่น ค่าเช่าตู้เย็น" class="w-full border border-amber-300 rounded-lg p-2 text-sm focus:outline-amber-500 bg-amber-50/50">
+          </div>
+        </div>
+
+        <!-- Grand Total Summary Banner -->
+        <div class="bg-slate-900 text-white rounded-xl p-3 flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-400">ยอดชำระสุทธิทั้งสิ้น</p>
+            <h4 id="calcGrandTotal" class="text-xl font-bold text-emerald-400">0 บาท</h4>
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">วันครบกำหนดชำระ</label>
+            <input type="date" id="formBillDueDate" class="bg-slate-800 text-white border border-slate-700 rounded-lg px-2 py-1 text-xs">
+          </div>
+        </div>
+
+        <div class="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+          <button type="button" onclick="closeBillModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-xs font-medium hover:bg-slate-50">ยกเลิก</button>
+          <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold">บันทึกและสร้างบิล</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts with relative paths for GitHub Pages -->
+  <script src="./config.js"></script>
+  <script src="./js/promptpay.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>
+

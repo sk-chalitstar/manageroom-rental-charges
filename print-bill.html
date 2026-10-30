@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>พิมพ์ใบแจ้งหนี้ / ใบเสร็จรับเงิน</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="./config.js"></script>
+  <style>
+    body { font-family: 'Sarabun', sans-serif; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #fff !important; padding: 0 !important; }
+      .print-page { border: none !important; box-shadow: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen py-6 flex flex-col items-center">
+
+  <div class="no-print mb-4 flex items-center gap-3">
+    <button onclick="window.print()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-sm text-sm flex items-center gap-2">
+      🖨️ พิมพ์เอกสาร (Print / Save as PDF)
+    </button>
+    <button onclick="window.close()" class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm">
+      ปิดหน้านี้
+    </button>
+  </div>
+
+  <div id="printArea" class="print-page bg-white max-w-2xl w-full p-10 border border-slate-300 rounded-lg shadow-sm text-slate-800">
+    <!-- Header -->
+    <div class="flex justify-between items-start border-b-2 border-slate-800 pb-4">
+      <div>
+        <h1 id="pDormName" class="text-xl font-bold text-slate-900">หอพักสุขสบาย</h1>
+        <p id="pDormAddress" class="text-xs text-slate-500 mt-1 max-w-xs">123 ซอยสุขุมวิท กทม.</p>
+        <p id="pDormPhone" class="text-xs text-slate-500">โทร: 081-234-5678</p>
+      </div>
+      <div class="text-right">
+        <h2 id="docTypeTitle" class="text-lg font-bold text-slate-800">ใบแจ้งหนี้ค่าเช่าห้องพัก</h2>
+        <p id="pBillId" class="text-xs text-slate-500 mt-1">เลขที่: -</p>
+        <p id="pDate" class="text-xs text-slate-500">วันที่: -</p>
+      </div>
+    </div>
+
+    <!-- Tenant & Room info -->
+    <div class="grid grid-cols-2 gap-4 py-4 border-b border-slate-200 text-xs">
+      <div>
+        <p><span class="font-bold text-slate-700">ห้องพักเลขที่:</span> <span id="pRoomNumber" class="text-base font-bold text-blue-700">-</span></p>
+        <p><span class="font-bold text-slate-700">ชื่อผู้เช่า:</span> <span id="pTenantName">—</span></p>
+      </div>
+      <div class="text-right">
+        <p><span class="font-bold text-slate-700">ประจำรอบเดือน:</span> <span id="pMonth" class="font-semibold">-</span></p>
+        <p><span class="font-bold text-slate-700">กำหนดชำระภายใน:</span> <span id="pDueDate" class="text-rose-600 font-semibold">-</span></p>
+      </div>
+    </div>
+
+    <!-- Table of Charges -->
+    <table class="w-full text-xs text-left my-4 border-collapse">
+      <thead>
+        <tr class="border-b border-slate-400 bg-slate-50">
+          <th class="py-2 px-2 text-center w-12">ลำดับ</th>
+          <th class="py-2 px-3">รายการ</th>
+          <th class="py-2 px-3 text-right">จำนวนหน่วย</th>
+          <th class="py-2 px-3 text-right">ราคาต่อหน่วย</th>
+          <th class="py-2 px-3 text-right">จำนวนเงิน (บาท)</th>
+        </tr>
+      </thead>
+      <tbody id="pItemsBody" class="divide-y divide-slate-100">
+        <!-- Rendered by JS -->
+      </tbody>
+      <tfoot>
+        <tr class="border-t-2 border-slate-800 font-bold text-sm">
+          <td colspan="4" class="py-3 px-3 text-right">ยอดรวมสุทธิที่ต้องชำระ:</td>
+          <td class="py-3 px-3 text-right text-base text-blue-700" id="pGrandTotal">0.00</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <!-- Footer Payment info -->
+    <div class="mt-8 pt-4 border-t border-slate-200 flex justify-between items-end text-xs">
+      <div class="space-y-1">
+        <p class="font-bold text-slate-800">ช่องทางการชำระเงิน:</p>
+        <p>พร้อมเพย์ (PromptPay): <span id="pPromptpayId" class="font-mono font-semibold">-</span></p>
+        <p>ชื่อบัญชี: <span id="pPromptpayName">-</span></p>
+        <p class="text-[11px] text-slate-400 mt-2">* กรุณาชำระเงินตามกำหนดเวลาที่ระบุไว้ในใบแจ้งหนี้</p>
+      </div>
+      <div class="text-center space-y-8">
+        <p class="text-xs">ลงชื่อ .....................................................</p>
+        <p class="text-[11px] text-slate-500">(ผู้จัดการ / เจ้าของหอพัก)</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadPrintData() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const billId = urlParams.get('billId') || urlParams.get('id');
+      if (!billId) return;
+
+      const scriptUrl = (typeof CONFIG !== 'undefined' ? CONFIG.getScriptUrl() : '') || localStorage.getItem('dorm_gas_url') || '';
+
+      try {
+        let bill = null;
+        let room = null;
+        let settings = {};
+
+        if (scriptUrl) {
+          const res = await fetch(`${scriptUrl}?action=getBill&id=${encodeURIComponent(billId)}`);
+          const result = await res.json();
+          if (result.success && result.data) {
+            bill = result.data.bill;
+            room = result.data.room;
+            settings = result.data.settings || {};
+          }
+        }
+
+        if (!bill) {
+          const savedBills = JSON.parse(localStorage.getItem('dorm_bills') || '[]');
+          bill = savedBills.find(b => String(b.id) === String(billId));
+          const savedRooms = JSON.parse(localStorage.getItem('dorm_rooms') || '[]');
+          room = savedRooms.find(r => String(r.number) === String(bill?.roomNumber));
+          settings = JSON.parse(localStorage.getItem('dorm_settings') || '{}');
+        }
+
+        if (!bill) return;
+
+        document.getElementById('pDormName').innerText = settings.dormName || 'หอพักสุขสบาย';
+        document.getElementById('pDormAddress').innerText = settings.dormAddress || '';
+        document.getElementById('pDormPhone').innerText = `โทร: ${settings.dormPhone || '-'}`;
+
+        document.getElementById('docTypeTitle').innerText = bill.status === 'paid' ? 'ใบเสร็จรับเงิน (RECEIPT)' : 'ใบแจ้งหนี้ (INVOICE)';
+        document.getElementById('pBillId').innerText = `เลขที่: ${bill.id}`;
+        document.getElementById('pDate').innerText = `วันที่: ${new Date(bill.createdAt || Date.now()).toLocaleDateString('th-TH')}`;
+
+        document.getElementById('pRoomNumber').innerText = bill.roomNumber;
+        document.getElementById('pTenantName').innerText = room?.tenant?.name || bill.tenantName || '—';
+        document.getElementById('pMonth').innerText = bill.month;
+        document.getElementById('pDueDate').innerText = bill.dueDate || 'ตามกำหนด';
+
+        document.getElementById('pPromptpayId').innerText = settings.promptpayId || '-';
+        document.getElementById('pPromptpayName').innerText = settings.promptpayName || '-';
+
+        const items = [
+          { name: '1. ค่าเช่าห้องพัก', units: '1 เดือน', rate: Number(bill.rent).toLocaleString(), amount: Number(bill.rent) },
+          { name: `2. ค่าไฟฟ้า (เลขเดิม ${bill.prevElectricMeter} - เลขใหม่ ${bill.currElectricMeter})`, units: `${bill.electricUnits} หน่วย`, rate: `${bill.electricRate} ฿`, amount: Number(bill.electricAmount) },
+          { name: `3. ค่าน้ำประปา (เลขเดิม ${bill.prevWaterMeter} - เลขใหม่ ${bill.currWaterMeter})`, units: `${bill.waterUnits} หน่วย`, rate: `${bill.waterRate} ฿`, amount: Number(bill.waterAmount) },
+        ];
+
+        let itemIndex = 4;
+        if (bill.commonFee > 0) {
+          items.push({
+            name: `${itemIndex++}. ค่าส่วนกลาง`,
+            units: '1 เดือน',
+            rate: Number(bill.commonFee).toLocaleString(),
+            amount: Number(bill.commonFee)
+          });
+        }
+
+        if (bill.parkingFee > 0) {
+          items.push({
+            name: `${itemIndex++}. ค่าที่จอดรถ${bill.licensePlate ? ' (ทะเบียน ' + bill.licensePlate + ')' : ''}`,
+            units: '1 คัน',
+            rate: Number(bill.parkingFee).toLocaleString(),
+            amount: Number(bill.parkingFee)
+          });
+        }
+
+        if (bill.otherFee > 0) {
+          items.push({
+            name: `${itemIndex++}. ค่าใช้จ่ายอื่นๆ (${bill.otherFeeRemark || 'เพิ่มเติม'})`,
+            units: '1 รายการ',
+            rate: '-',
+            amount: Number(bill.otherFee)
+          });
+        }
+
+        const tbody = document.getElementById('pItemsBody');
+        tbody.innerHTML = items.map((it, idx) => `
+          <tr>
+            <td class="py-2 px-2 text-center text-slate-400">${idx + 1}</td>
+            <td class="py-2 px-3 font-medium">${it.name}</td>
+            <td class="py-2 px-3 text-right">${it.units}</td>
+            <td class="py-2 px-3 text-right">${it.rate}</td>
+            <td class="py-2 px-3 text-right font-semibold">${it.amount.toLocaleString()} ฿</td>
+          </tr>
+        `).join('');
+
+        document.getElementById('pGrandTotal').innerText = `${Number(bill.totalAmount).toLocaleString()} บาท`;
+
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    loadPrintData();
+  </script>
+</body>
+</html>
+
