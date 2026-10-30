@@ -29,8 +29,11 @@
       <p id="roomTitle" class="text-base font-semibold text-blue-100 mt-1">ใบแจ้งหนี้ห้อง -</p>
       
       <!-- Tenant Name & Bill Info Header -->
-      <div class="mt-3 bg-white/15 backdrop-blur-sm rounded-xl py-2 px-3 text-xs text-white/95 space-y-1">
-        <p class="font-bold text-sm" id="tenantNameHeader">ผู้เช่า: —</p>
+      <div class="mt-3 bg-white/15 backdrop-blur-sm rounded-xl py-2.5 px-3 text-xs text-white/95 space-y-1.5">
+        <div class="flex items-center justify-between font-bold text-sm">
+          <p id="tenantNameHeader">ผู้เช่า: —</p>
+          <span id="roomTypeHeader" class="text-[11px] bg-white/20 px-2 py-0.5 rounded-md font-medium text-blue-50">ชั้น - | มาตรฐาน</span>
+        </div>
         <div class="flex items-center justify-between text-[11px] text-blue-100 pt-1 border-t border-white/20">
           <span id="billIdHeader">เลขที่บิล: —</span>
           <span id="billDateHeader">วันที่ออกบิล: —</span>
@@ -182,18 +185,21 @@
         const tenantName = (roomData?.tenant?.name) || bill.tenantName || 'ผู้เช่าห้องพัก';
         const formattedMonth = typeof formatMonthName === 'function' ? formatMonthName(bill.month) : bill.month;
         const formattedCreatedDate = typeof formatThaiDateTime === 'function' ? formatThaiDateTime(bill.createdAt) : bill.createdAt;
-        const formattedDueDate = typeof formatThaiDate === 'function' ? formatThaiDate(bill.dueDate) : bill.dueDate;
+        const formattedDueDate = bill.dueDate ? (typeof formatThaiDate === 'function' ? formatThaiDate(bill.dueDate) : bill.dueDate) : '-';
 
         // Header
+        const floor = roomData?.floor || bill.floor || '-';
+        const type = roomData?.type || bill.roomType || 'มาตรฐาน';
         document.getElementById('dormTitle').innerText = settings.dormName || '-:- หอพัก -:-';
         document.getElementById('roomTitle').innerText = `ใบแจ้งหนี้ห้อง ${bill.roomNumber} (${formattedMonth})`;
         document.getElementById('tenantNameHeader').innerText = `👤 ผู้เช่า: ${tenantName}`;
+        document.getElementById('roomTypeHeader').innerText = `ชั้น ${floor} | ${type}`;
         document.getElementById('billIdHeader').innerText = `เลขที่: ${bill.id}`;
         document.getElementById('billDateHeader').innerText = `วันที่ออก: ${formattedCreatedDate}`;
 
         // Grand Total & Due
         document.getElementById('grandTotalText').innerText = `${Number(bill.totalAmount).toLocaleString()} บาท`;
-        document.getElementById('dueDateText').innerText = `📅 กำหนดชำระภายใน: ${formattedDueDate || 'ตามกำหนด'}`;
+        document.getElementById('dueDateText').innerText = `📅 กำหนดชำระภายใน: ${(formattedDueDate && formattedDueDate !== '-') ? formattedDueDate : '-'}`;
 
         // Rent
         document.getElementById('rentAmount').innerText = `${Number(bill.rent).toLocaleString()} ฿`;

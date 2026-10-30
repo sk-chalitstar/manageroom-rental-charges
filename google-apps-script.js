@@ -165,6 +165,8 @@ function getBillsList() {
     return {
       id: String(b.id),
       roomNumber: String(b.roomNumber),
+      floor: room ? room.floor : (b.floor || 1),
+      roomType: room ? room.type : (b.roomType || 'มาตรฐาน'),
       tenantName: (room && room.tenant && room.tenant.name) || b.tenantName || '',
       month: b.month || '',
       createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
@@ -207,6 +209,21 @@ function formatThaiDateTime(dateVal) {
     const hours = String(d.getHours()).padStart(2, '0');
     const minutes = String(d.getMinutes()).padStart(2, '0');
     return `${day}/${month}/${year} ${hours}:${minutes} น.`;
+  } catch (e) {
+    return String(dateVal);
+  }
+}
+
+function formatThaiDate(dateVal) {
+  if (!dateVal || dateVal === '-') return '-';
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    let year = d.getFullYear();
+    if (year < 2400) year += 543;
+    return `${day}/${month}/${year}`;
   } catch (e) {
     return String(dateVal);
   }
@@ -577,12 +594,9 @@ function handleSaveSettings(settingsData) {
 
 function buildBillFlexMessage(dormSettings, bill, publicUrl) {
   const isPaid = bill.status === 'paid';
-  const headerColor = isPaid ? '#10b981' : '#2563eb';
-  const statusBadgeText = isPaid ? 'ชำระเงินเรียบร้อยแล้ว' : 'รอชำระเงิน';
-  const statusBadgeColor = isPaid ? '#059669' : '#dc2626';
-
   const formattedMonth = formatMonthName(bill.month);
   const formattedDate = formatThaiDateTime(bill.createdAt);
+  const formattedDueDate = bill.dueDate ? formatThaiDate(bill.dueDate) : '-';
   const tenantName = bill.tenantName || 'ผู้เช่าห้องพัก';
 
   // Build Portal URL with gasUrl parameter so mobile users connect automatically
@@ -596,150 +610,389 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
     portalUri = `${publicUrl}/tenant-portal.html?billId=${bill.id}${gasParam}`;
   }
 
-  const elecText = bill.electricUnits > 0
-    ? `2. ค่าไฟ (${bill.electricUnits} หน่วย @ ${bill.electricRate}฿)`
-    : `2. ค่าไฟฟ้า (ราคาเหมา / กำหนดเอง)`;
-
-  const waterText = bill.waterUnits > 0
-    ? `3. ค่าน้ำ (${bill.waterUnits} หน่วย @ ${bill.waterRate}฿)`
-    : `3. ค่าน้ำประปา (ราคาเหมา / กำหนดเอง)`;
-
-  const contents = [
+  // Items table matching image
+  const items = [
     {
-      type: "box",
-      layout: "horizontal",
-      contents: [
-        { type: "text", text: "สถานะบิล:", size: "sm", color: "#64748b" },
-        { type: "text", text: statusBadgeText, size: "sm", weight: "bold", color: statusBadgeColor, align: "end" }
-      ]
-    },
-    { type: "separator", margin: "md" },
-    {
-      type: "box",
-      layout: "vertical",
-      margin: "md",
-      spacing: "sm",
-      contents: [
-        {
-          type: "box",
-          layout: "horizontal",
-          contents: [
-            { type: "text", text: "1. ค่าเช่าห้อง", size: "sm", color: "#334155" },
-            { type: "text", text: `${Number(bill.rent).toLocaleString()} ฿`, size: "sm", align: "end", weight: "bold" }
-          ]
-        },
-        {
-          type: "box",
-          layout: "horizontal",
-          contents: [
-            { type: "text", text: elecText, size: "xs", color: "#64748b" },
-            { type: "text", text: `${Number(bill.electricAmount).toLocaleString()} ฿`, size: "sm", align: "end", weight: "bold" }
-          ]
-        },
-        {
-          type: "box",
-          layout: "horizontal",
-          contents: [
-            { type: "text", text: waterText, size: "xs", color: "#64748b" },
-            { type: "text", text: `${Number(bill.waterAmount).toLocaleString()} ฿`, size: "sm", align: "end", weight: "bold" }
-          ]
-        },
-        ...(bill.commonFee > 0 ? [{
-          type: "box",
-          layout: "horizontal",
-          contents: [
-            { type: "text", text: "4. ค่าส่วนกลาง", size: "sm", color: "#334155" },
-            { type: "text", text: `${Number(bill.commonFee).toLocaleString()} ฿`, size: "sm", align: "end", weight: "bold" }
-          ]
-        }] : []),
-        ...(bill.parkingFee > 0 ? [{
-          type: "box",
-          layout: "horizontal",
-          contents: [
-            { type: "text", text: `5. ค่าที่จอดรถ${bill.licensePlate ? ' (' + bill.licensePlate + ')' : ''}`, size: "sm", color: "#334155" },
-            { type: "text", text: `${Number(bill.parkingFee).toLocaleString()} ฿`, size: "sm", align: "end", weight: "bold" }
-          ]
-        }] : []),
-        ...(bill.otherFee > 0 ? [{
-          type: "box",
-          layout: "horizontal",
-          contents: [
-            { type: "text", text: `6. อื่นๆ (${bill.otherFeeRemark || 'เพิ่มเติม'})`, size: "xs", color: "#64748b" },
-            { type: "text", text: `${Number(bill.otherFee).toLocaleString()} ฿`, size: "sm", align: "end", weight: "bold" }
-          ]
-        }] : [])
-      ]
-    },
-    { type: "separator", margin: "lg" },
-    {
-      type: "box",
-      layout: "horizontal",
-      margin: "md",
-      contents: [
-        { type: "text", text: "ยอดชำระสุทธิ", size: "md", weight: "bold", color: "#0f172a" },
-        { type: "text", text: `${Number(bill.totalAmount).toLocaleString()} บาท`, size: "xl", weight: "bold", color: "#dc2626", align: "end" }
-      ]
-    },
-    {
-      type: "box",
-      layout: "vertical",
-      margin: "md",
-      backgroundColor: "#f8fafc",
-      paddingAll: "10px",
-      cornerRadius: "8px",
-      contents: [
-        { type: "text", text: `📅 กำหนดชำระภายใน: ${bill.dueDate || 'ตามกำหนด'}`, size: "xs", color: "#475569" },
-        { type: "text", text: `💳 พร้อมเพย์: ${dormSettings.promptpayId || '-'} (${dormSettings.promptpayName || 'ผู้ดูแลหอ'})`, size: "xs", color: "#475569", margin: "xs" }
-      ]
+      idx: '1',
+      name: '1. ค่าเช่าห้องพัก',
+      units: '1 เดือน',
+      rate: Number(bill.rent).toLocaleString(),
+      amount: `${Number(bill.rent).toLocaleString()} ฿`
     }
   ];
 
+  // Electricity
+  if (bill.electricUnits > 0) {
+    items.push({
+      idx: '2',
+      name: `2. ค่าไฟฟ้า (เลขเดิม ${bill.prevElectricMeter} - เลขใหม่ ${bill.currElectricMeter})`,
+      units: `${bill.electricUnits} หน่วย`,
+      rate: `${bill.electricRate || 8} ฿`,
+      amount: `${Number(bill.electricAmount).toLocaleString()} ฿`
+    });
+  } else {
+    items.push({
+      idx: '2',
+      name: `2. ค่าไฟฟ้า (ราคาเหมา / กำหนดเอง)`,
+      units: `1 รายการ`,
+      rate: `-`,
+      amount: `${Number(bill.electricAmount).toLocaleString()} ฿`
+    });
+  }
+
+  // Water
+  if (bill.waterUnits > 0) {
+    items.push({
+      idx: '3',
+      name: `3. ค่าน้ำประปา (เลขเดิม ${bill.prevWaterMeter} - เลขใหม่ ${bill.currWaterMeter})`,
+      units: `${bill.waterUnits} หน่วย`,
+      rate: `${bill.waterRate || 18} ฿`,
+      amount: `${Number(bill.waterAmount).toLocaleString()} ฿`
+    });
+  } else {
+    items.push({
+      idx: '3',
+      name: `3. ค่าน้ำประปา (ราคาเหมา / กำหนดเอง)`,
+      units: `1 รายการ`,
+      rate: `-`,
+      amount: `${Number(bill.waterAmount).toLocaleString()} ฿`
+    });
+  }
+
+  let itemIdx = 4;
+  if (bill.commonFee > 0) {
+    items.push({
+      idx: String(itemIdx++),
+      name: `${itemIdx - 1}. ค่าส่วนกลาง`,
+      units: '1 เดือน',
+      rate: Number(bill.commonFee).toLocaleString(),
+      amount: `${Number(bill.commonFee).toLocaleString()} ฿`
+    });
+  }
+
+  if (bill.parkingFee > 0) {
+    items.push({
+      idx: String(itemIdx++),
+      name: `${itemIdx - 1}. ค่าที่จอดรถ${bill.licensePlate ? ' (' + bill.licensePlate + ')' : ''}`,
+      units: '1 คัน',
+      rate: Number(bill.parkingFee).toLocaleString(),
+      amount: `${Number(bill.parkingFee).toLocaleString()} ฿`
+    });
+  }
+
+  if (bill.otherFee > 0) {
+    items.push({
+      idx: String(itemIdx++),
+      name: `${itemIdx - 1}. ค่าอื่นๆ (${bill.otherFeeRemark || 'เพิ่มเติม'})`,
+      units: '1 รายการ',
+      rate: '-',
+      amount: `${Number(bill.otherFee).toLocaleString()} ฿`
+    });
+  }
+
+  // Convert table items into Flex Message Rows
+  const itemRows = items.map(it => ({
+    type: "box",
+    layout: "horizontal",
+    margin: "sm",
+    contents: [
+      {
+        type: "text",
+        text: it.name,
+        size: "xxs",
+        color: "#1e293b",
+        wrap: true,
+        flex: 5
+      },
+      {
+        type: "text",
+        text: it.units,
+        size: "xxs",
+        color: "#475569",
+        align: "end",
+        flex: 2
+      },
+      {
+        type: "text",
+        text: it.rate,
+        size: "xxs",
+        color: "#475569",
+        align: "end",
+        flex: 2
+      },
+      {
+        type: "text",
+        text: it.amount,
+        size: "xxs",
+        weight: "bold",
+        color: "#0f172a",
+        align: "end",
+        flex: 3
+      }
+    ]
+  }));
+
   const flexContents = {
     type: "bubble",
-    size: "mega",
-    header: {
-      type: "box",
-      layout: "vertical",
-      backgroundColor: headerColor,
-      paddingAll: "20px",
-      contents: [
-        { type: "text", text: dormSettings.dormName || "หอพักสุขสบาย", weight: "bold", color: "#ffffff", size: "lg" },
-        { type: "text", text: `ใบแจ้งหนี้ห้อง ${bill.roomNumber}`, color: "#ffffff", size: "md", weight: "bold", margin: "xs" },
-        { type: "text", text: `👤 ผู้เช่า: ${tenantName}`, color: "#ffffffee", size: "xs", margin: "xs" },
-        { type: "text", text: `เลขที่บิล: ${bill.id} | ประจำรอบ: ${formattedMonth}`, color: "#ffffffcc", size: "xxs", margin: "xs" },
-        { type: "text", text: `วันที่ออกบิล: ${formattedDate}`, color: "#ffffffcc", size: "xxs" }
-      ]
-    },
+    size: "giga",
     body: {
       type: "box",
       layout: "vertical",
-      paddingAll: "20px",
-      contents: contents
-    },
-    footer: {
-      type: "box",
-      layout: "vertical",
-      spacing: "sm",
+      paddingAll: "18px",
+      backgroundColor: "#ffffff",
       contents: [
-        ...(portalUri ? [{
-          type: "button",
-          style: "primary",
-          color: "#2563eb",
-          action: {
-            type: "uri",
-            label: "ดูบิล & สแกน QR ชำระเงิน",
-            uri: portalUri
-          }
-        }] : []),
+        // Top Header
         {
-          type: "text",
-          text: `ติดต่อสอบถาม: ${dormSettings.dormPhone || '-'}`,
-          align: "center",
-          size: "xxs",
-          color: "#94a3b8"
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            {
+              type: "box",
+              layout: "vertical",
+              flex: 6,
+              spacing: "none",
+              contents: [
+                {
+                  type: "text",
+                  text: dormSettings.dormName || "-:-หอพัก-:-",
+                  weight: "bold",
+                  size: "md",
+                  color: "#0f172a"
+                },
+                ...(dormSettings.dormAddress ? [{
+                  type: "text",
+                  text: dormSettings.dormAddress,
+                  size: "xxs",
+                  color: "#64748b",
+                  wrap: true,
+                  margin: "xs"
+                }] : []),
+                ...(dormSettings.dormPhone ? [{
+                  type: "text",
+                  text: `โทร: ${dormSettings.dormPhone}`,
+                  size: "xxs",
+                  color: "#64748b",
+                  margin: "xs"
+                }] : [])
+              ]
+            },
+            {
+              type: "box",
+              layout: "vertical",
+              flex: 5,
+              spacing: "none",
+              contents: [
+                {
+                  type: "text",
+                  text: isPaid ? "ใบเสร็จรับเงิน (RECEIPT)" : "ใบแจ้งหนี้ (INVOICE)",
+                  weight: "bold",
+                  size: "sm",
+                  color: isPaid ? "#059669" : "#0f172a",
+                  align: "end"
+                },
+                {
+                  type: "text",
+                  text: `เลขที่บิล: ${bill.id}`,
+                  size: "xxs",
+                  color: "#475569",
+                  weight: "bold",
+                  align: "end",
+                  margin: "xs"
+                },
+                {
+                  type: "text",
+                  text: `วันที่ออกบิล: ${formattedDate}`,
+                  size: "xxs",
+                  color: "#64748b",
+                  align: "end",
+                  margin: "xs"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          type: "separator",
+          margin: "md",
+          color: "#0f172a"
+        },
+        // Tenant & Room Info (Middle section)
+        {
+          type: "box",
+          layout: "horizontal",
+          margin: "md",
+          contents: [
+            {
+              type: "box",
+              layout: "vertical",
+              flex: 6,
+              spacing: "xs",
+              contents: [
+                {
+                  type: "box",
+                  layout: "baseline",
+                  contents: [
+                    { type: "text", text: "ห้องพักเลขที่: ", size: "xs", color: "#475569", flex: 0 },
+                    { type: "text", text: `${bill.roomNumber} (ชั้น ${bill.floor || '-'})`, size: "sm", weight: "bold", color: "#1d4ed8", flex: 0 }
+                  ]
+                },
+                {
+                  type: "box",
+                  layout: "baseline",
+                  contents: [
+                    { type: "text", text: "ประเภทห้อง: ", size: "xs", color: "#475569", flex: 0 },
+                    { type: "text", text: String(bill.roomType || 'มาตรฐาน'), size: "xs", weight: "bold", color: "#334155", flex: 0 }
+                  ]
+                },
+                {
+                  type: "box",
+                  layout: "baseline",
+                  contents: [
+                    { type: "text", text: "ชื่อผู้เช่าห้อง: ", size: "xs", color: "#475569", flex: 0 },
+                    { type: "text", text: tenantName, size: "xs", weight: "bold", color: "#0f172a", flex: 0 }
+                  ]
+                }
+              ]
+            },
+            {
+              type: "box",
+              layout: "vertical",
+              flex: 5,
+              spacing: "xs",
+              contents: [
+                {
+                  type: "text",
+                  text: `ประจำรอบเดือน: ${formattedMonth}`,
+                  size: "xs",
+                  color: "#0f172a",
+                  align: "end"
+                },
+                {
+                  type: "text",
+                  text: `กำหนดชำระภายใน: ${formattedDueDate}`,
+                  size: "xs",
+                  color: formattedDueDate !== '-' ? "#dc2626" : "#475569",
+                  weight: "bold",
+                  align: "end"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          type: "separator",
+          margin: "md",
+          color: "#cbd5e1"
+        },
+        // Table Header
+        {
+          type: "box",
+          layout: "horizontal",
+          backgroundColor: "#f8fafc",
+          paddingAll: "6px",
+          cornerRadius: "4px",
+          margin: "sm",
+          contents: [
+            { type: "text", text: "รายการ", size: "xxs", weight: "bold", color: "#475569", flex: 5 },
+            { type: "text", text: "จำนวนหน่วย", size: "xxs", weight: "bold", color: "#475569", align: "end", flex: 2 },
+            { type: "text", text: "ราคาต่อหน่วย", size: "xxs", weight: "bold", color: "#475569", align: "end", flex: 2 },
+            { type: "text", text: "จำนวนเงิน (บาท)", size: "xxs", weight: "bold", color: "#475569", align: "end", flex: 3 }
+          ]
+        },
+        // Table Body
+        {
+          type: "box",
+          layout: "vertical",
+          spacing: "none",
+          contents: itemRows
+        },
+        {
+          type: "separator",
+          margin: "md",
+          color: "#0f172a"
+        },
+        // Total Due Banner
+        {
+          type: "box",
+          layout: "horizontal",
+          margin: "md",
+          contents: [
+            {
+              type: "text",
+              text: "ยอดรวมสุทธิที่ต้องชำระ:",
+              size: "sm",
+              weight: "bold",
+              color: "#0f172a",
+              align: "end",
+              flex: 6
+            },
+            {
+              type: "text",
+              text: `${Number(bill.totalAmount).toLocaleString()} บาท`,
+              size: "lg",
+              weight: "bold",
+              color: "#1d4ed8",
+              align: "end",
+              flex: 4
+            }
+          ]
+        },
+        {
+          type: "separator",
+          margin: "md",
+          color: "#e2e8f0"
+        },
+        // Footer Payment & Signature Info
+        {
+          type: "box",
+          layout: "horizontal",
+          margin: "md",
+          contents: [
+            {
+              type: "box",
+              layout: "vertical",
+              flex: 6,
+              spacing: "none",
+              contents: [
+                { type: "text", text: "ช่องทางการชำระเงิน:", size: "xxs", weight: "bold", color: "#0f172a" },
+                { type: "text", text: `พร้อมเพย์ (PromptPay): ${dormSettings.promptpayId || '-'}`, size: "xxs", color: "#475569", margin: "xs" },
+                { type: "text", text: `ชื่อบัญชี: ${dormSettings.promptpayName || '-'}`, size: "xxs", color: "#475569" },
+                { type: "text", text: "* กรุณาชำระเงินตามกำหนดเวลาที่ระบุไว้ในใบแจ้งหนี้", size: "xxs", color: "#94a3b8", margin: "xs", wrap: true }
+              ]
+            },
+            {
+              type: "box",
+              layout: "vertical",
+              flex: 5,
+              spacing: "none",
+              contents: [
+                { type: "text", text: "ลงชื่อ ..........................................", size: "xxs", color: "#64748b", align: "end", margin: "md" },
+                { type: "text", text: "(ผู้จัดการ / เจ้าของหอพัก)", size: "xxs", color: "#94a3b8", align: "end" }
+              ]
+            }
+          ]
         }
       ]
-    }
+    },
+    ...(portalUri ? {
+      footer: {
+        type: "box",
+        layout: "vertical",
+        spacing: "sm",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: "#1d4ed8",
+            action: {
+              type: "uri",
+              label: "ดูบิล & สแกน QR ชำระเงิน",
+              uri: portalUri
+            }
+          }
+        ]
+      }
+    } : {})
   };
 
   return {
@@ -788,8 +1041,10 @@ function handleSendLineBill(billId, baseUrl) {
     return createJsonResponse({ success: false, error: `ห้อง ${bill.roomNumber} ยังไม่มี LINE User ID ของผู้เช่า` });
   }
 
-  // Bind tenant name to bill object
+  // Bind tenant and room info to bill object
   bill.tenantName = room.tenant.name || bill.tenantName || '';
+  bill.floor = room.floor || 1;
+  bill.roomType = room.type || 'มาตรฐาน';
 
   const flexMsg = buildBillFlexMessage(settings, bill, baseUrl);
   pushLineMessage(token, room.tenant.lineUserId, flexMsg);
@@ -831,6 +1086,8 @@ function handleBatchSendLine(baseUrl) {
       if (room?.tenant?.lineUserId) {
         try {
           bill.tenantName = room.tenant.name || bill.tenantName || '';
+          bill.floor = room.floor || 1;
+          bill.roomType = room.type || 'มาตรฐาน';
           const flexMsg = buildBillFlexMessage(settings, bill, baseUrl);
           pushLineMessage(token, room.tenant.lineUserId, flexMsg);
 

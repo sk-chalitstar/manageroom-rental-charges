@@ -194,9 +194,7 @@ function setupBillingMonthDefaults() {
 
   const dueDateInput = document.getElementById('formBillDueDate');
   if (dueDateInput) {
-    const due = new Date();
-    due.setDate(due.getDate() + 7);
-    dueDateInput.value = due.toISOString().split('T')[0];
+    dueDateInput.value = ''; // ปล่อยว่างไว้เป็นค่าเริ่มต้น (ไม่บังคับ)
   }
 }
 
@@ -925,6 +923,14 @@ function renderMeter() {
               <input type="text" id="card-m-remark-${room.number}" value="${remarkVal}" placeholder="เช่น ค่าเช่าตู้เย็น, ค่าคีย์การ์ด" class="w-full border border-amber-300 rounded-lg p-1.5 text-xs bg-amber-50/50 focus:outline-amber-500">
             </div>
           </div>
+
+          <div class="pt-2 border-t border-slate-200">
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1 flex items-center justify-between">
+              <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5 text-blue-600"></i> กำหนดชำระภายใน (ไม่บังคับ)</span>
+              <span class="text-[10px] text-slate-400 font-normal">เว้นว่างไว้จะเป็น "-"</span>
+            </label>
+            <input type="date" id="card-m-duedate-${room.number}" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white focus:outline-blue-500 font-medium text-slate-700">
+          </div>
         </div>
 
         <button onclick="createBillFromCard('${room.number}')" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center justify-center gap-2">
@@ -988,6 +994,9 @@ function renderMeter() {
         </td>
         <td class="px-3 py-3">
           <input type="text" id="m-remark-${room.number}" value="${remarkVal}" placeholder="ระบุหมายเหตุ" class="w-28 border border-amber-300 rounded px-1.5 py-1 text-xs ${otherVal ? '' : 'hidden'} bg-amber-50/50">
+        </td>
+        <td class="px-3 py-3">
+          <input type="date" id="m-duedate-${room.number}" class="w-28 border border-slate-200 rounded px-1.5 py-1 text-xs" title="กำหนดชำระภายใน (ไม่บังคับ)">
         </td>
 
         <td class="px-3 py-3 font-bold text-blue-600 text-sm whitespace-nowrap" id="m-total-${room.number}">
@@ -1099,6 +1108,7 @@ async function createBillFromCard(roomNumber) {
   const licensePlate = document.getElementById(`card-m-plate-${roomNumber}`)?.value.trim() || '';
   const otherFee = Number(document.getElementById(`card-m-other-${roomNumber}`)?.value || 0);
   const otherFeeRemark = document.getElementById(`card-m-remark-${roomNumber}`)?.value.trim() || '';
+  const dueDate = document.getElementById(`card-m-duedate-${roomNumber}`)?.value || '';
 
   const billPayload = {
     roomNumber: room.number,
@@ -1119,7 +1129,8 @@ async function createBillFromCard(roomNumber) {
     parkingFee,
     licensePlate,
     otherFee,
-    otherFeeRemark
+    otherFeeRemark,
+    dueDate
   };
 
   try {
@@ -1172,6 +1183,7 @@ async function createBillFromMeterRow(roomNumber) {
   const licensePlate = document.getElementById(`m-plate-${roomNumber}`)?.value.trim() || '';
   const otherFee = Number(document.getElementById(`m-other-${roomNumber}`)?.value || 0);
   const otherFeeRemark = document.getElementById(`m-remark-${roomNumber}`)?.value.trim() || '';
+  const dueDate = document.getElementById(`m-duedate-${roomNumber}`)?.value || '';
 
   const elecRate = Number(state.settings.electricRate || 8);
   const waterRate = Number(state.settings.waterRate || 18);
@@ -1197,7 +1209,8 @@ async function createBillFromMeterRow(roomNumber) {
     parkingFee,
     licensePlate,
     otherFee,
-    otherFeeRemark
+    otherFeeRemark,
+    dueDate
   };
 
   try {
@@ -1292,8 +1305,9 @@ function renderBills() {
           <p class="text-[10px] text-slate-400">${formattedDate}</p>
         </td>
         <td class="px-4 py-4">
-          <p class="font-bold text-blue-600 text-base">ห้อง ${bill.roomNumber}</p>
-          <p class="text-xs text-slate-600">${tenantName}</p>
+          <p class="font-bold text-blue-600 text-base">ห้อง ${bill.roomNumber} <span class="text-xs font-normal text-slate-500">(ชั้น ${room?.floor || bill.floor || '-'})</span></p>
+          <p class="text-xs font-semibold text-slate-700">${tenantName}</p>
+          <p class="text-[10px] text-slate-400 font-medium">${room?.type || bill.roomType || 'มาตรฐาน'}</p>
         </td>
         <td class="px-4 py-4 font-semibold text-slate-700">${Number(bill.rent).toLocaleString()} ฿</td>
         <td class="px-4 py-4">${elecText}</td>
@@ -1348,8 +1362,8 @@ function renderBills() {
           <div class="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
               <span class="text-[11px] font-mono font-semibold text-slate-400 block">${bill.id}</span>
-              <h3 class="text-xl font-bold text-slate-800">ห้อง ${bill.roomNumber}</h3>
-              <p class="text-xs text-slate-600 font-medium">👤 ${tenantName}</p>
+              <h3 class="text-xl font-bold text-slate-800">ห้อง ${bill.roomNumber} <span class="text-xs font-normal text-slate-500">(ชั้น ${room?.floor || bill.floor || '-'})</span></h3>
+              <p class="text-xs text-slate-600 font-medium">👤 ${tenantName} <span class="text-[11px] text-slate-400">• ${room?.type || bill.roomType || 'มาตรฐาน'}</span></p>
               <p class="text-xs text-blue-600 font-semibold mt-0.5">${formattedMonth}</p>
               <p class="text-[10px] text-slate-400">วันที่ออก: ${formattedDate}</p>
             </div>
@@ -1618,6 +1632,7 @@ function onBillRoomSelect() {
 
   document.getElementById('formBillOtherFee').value = room.otherFee || 0;
   document.getElementById('formBillOtherRemark').value = room.otherFeeRemark || '';
+  document.getElementById('formBillDueDate').value = '';
 
   toggleBillOtherRemark();
   calculateBillTotal();
