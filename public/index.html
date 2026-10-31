@@ -19,6 +19,9 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col md:flex-row">
 
+  <!-- Global Loading Indicator -->
+  <div id="globalLoadingBar" style="display: none;" class="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 animate-pulse"></div>
+
   <!-- Sidebar Navigation -->
   <aside class="w-full md:w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col justify-between">
     <div>
@@ -29,7 +32,7 @@
         </div>
         <div>
           <h1 class="font-bold text-base tracking-tight" id="sidebarDormName">หอพักสุขสบาย</h1>
-          <p class="text-xs text-slate-400">ระบบจัดการห้องเช่า & บิล LINE</p>
+          <p class="text-xs text-slate-400">ระบบหอพัก & Google Sheets</p>
         </div>
       </div>
 
@@ -53,20 +56,20 @@
         </button>
         <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
           <i data-lucide="settings" class="w-5 h-5"></i>
-          ตั้งค่าหอพัก & LINE Bot
+          ตั้งค่าหอพัก & ฐานข้อมูล
         </button>
       </nav>
     </div>
 
-    <!-- Quick Bot Status Info -->
+    <!-- Quick Status Info -->
     <div class="p-4 m-3 bg-slate-800/80 rounded-xl border border-slate-700/60 text-xs text-slate-300 space-y-2">
       <div class="flex items-center justify-between">
-        <span class="flex items-center gap-1.5 font-medium text-white">
+        <div id="sheetStatusBadge" class="flex items-center gap-1.5 font-medium text-emerald-400">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          LINE Messaging API
-        </span>
+          เชื่อมต่อ Google Sheets แล้ว
+        </div>
       </div>
-      <p class="text-slate-400 leading-relaxed">ส่งบิลเข้าแชท LINE ผู้เช่าตรงแบบการ์ด Flex Message สวยงาม</p>
+      <p class="text-slate-400 leading-relaxed text-[11px]">ข้อมูลถูกบันทึกลงตาราง Google Sheets อัตโนมัติ ปลอดภัย ฟรี 100%</p>
     </div>
   </aside>
 
@@ -81,9 +84,9 @@
 
       <!-- Quick Action Buttons -->
       <div class="flex items-center gap-2">
-        <button onclick="openMeterModal()" class="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-semibold transition">
+        <button onclick="switchTab('meter')" class="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-semibold transition">
           <i data-lucide="edit-3" class="w-4 h-4"></i>
-          จดมิเตอร์เดือนนี้
+          จดมิเตอร์รอบนี้
         </button>
         <button onclick="batchSendLineBills()" class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-xs font-semibold shadow-sm transition">
           <i data-lucide="send" class="w-4 h-4"></i>
@@ -91,6 +94,15 @@
         </button>
       </div>
     </header>
+
+    <!-- Top Connection Notice Banner (Shows if not configured) -->
+    <div id="sheetConnectionBanner" class="hidden bg-amber-500 text-white px-6 py-3 text-xs flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        <span>ระบบกำลังทำงานด้วยข้อมูลตัวอย่าง กรุณาระบุ <strong>Google Apps Script Web App URL</strong> ในเมนูตั้งค่า เพื่อเชื่อมต่อ Google Sheet ของคุณ <span id="sheetBannerError"></span></span>
+      </div>
+      <button onclick="switchTab('settings')" class="underline font-bold hover:text-amber-100">ไปที่ตั้งค่า ➔</button>
+    </div>
 
     <!-- Content Sections -->
     <div class="p-6 space-y-6">
@@ -238,22 +250,30 @@
             <i data-lucide="info" class="w-5 h-5"></i>
           </div>
           <div class="text-sm text-blue-900">
-            <h4 class="font-bold">ระบบจดมิเตอร์น้ำ - ไฟ และคำนวณบิลครบวงจร</h4>
+            <h4 class="font-bold">ระบบจดมิเตอร์น้ำ - ไฟ และคำนวณบิลอัตโนมัติ</h4>
             <p class="text-blue-700 mt-1">ดึงเลขมิเตอร์รอบก่อนหน้ามาแสดงอัตโนมัติ กรอกเลขมิเตอร์รอบใหม่ ระบบจะคำนวณหน่วยและรวมค่าส่วนกลาง ค่าที่จอดรถ ค่าอื่นๆ จากข้อมูลห้องพักให้อัตโนมัติในคลิกเดียว</p>
           </div>
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
           <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3">
               <h3 class="font-bold text-slate-800 text-base">บันทึกมิเตอร์รอบปัจจุบัน</h3>
               <div class="flex items-center gap-2">
                 <label class="text-xs text-slate-500 font-medium">รอบบิลประจำเดือน:</label>
                 <input type="text" id="meterBillingMonth" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs bg-slate-50 font-semibold" value="">
               </div>
+              <div class="flex items-center gap-2 bg-blue-50/80 border border-blue-200 rounded-xl px-3 py-1.5 shadow-2xs">
+                <label class="text-xs text-blue-900 font-bold flex items-center gap-1.5">
+                  <i data-lucide="calendar" class="w-4 h-4 text-blue-600"></i>
+                  กำหนดชำระทุกห้อง:
+                </label>
+                <input type="date" id="meterGlobalDueDate" onchange="syncGlobalDueDateToCards()" class="border border-blue-300 rounded-lg px-2 py-1 text-xs bg-white text-slate-800 font-medium focus:ring-1 focus:ring-blue-500" title="กำหนดชำระภายในสำหรับทุกห้อง (เว้นว่างไว้หากไม่ต้องการกำหนด)">
+                <button type="button" onclick="clearGlobalDueDate()" class="text-[10px] text-slate-500 hover:text-rose-600 font-medium px-1" title="ล้างวันที่ (เว้นว่างเป็น -)">ล้าง</button>
+              </div>
             </div>
 
-            <!-- Meter View Mode Toggle -->
+            <!-- Meter View Mode Toggle (Card vs Table) -->
             <div class="flex items-center bg-slate-200/80 p-1 rounded-xl text-xs">
               <button type="button" onclick="setMeterViewMode('card')" id="btnMeterViewCard" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition bg-white text-blue-600 shadow-sm">
                 <i data-lucide="layout-grid" class="w-4 h-4"></i>
@@ -266,7 +286,7 @@
             </div>
           </div>
 
-          <!-- Meter Card View (Default) -->
+          <!-- Meter Card View (Matches User Requirement) -->
           <div id="meterCardContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             <!-- Rendered by JS -->
           </div>
@@ -288,7 +308,8 @@
                   <th class="px-3 py-3">ที่จอดรถ</th>
                   <th class="px-3 py-3">ทะเบียนรถ</th>
                   <th class="px-3 py-3">ค่าอื่นๆ</th>
-                  <th class="px-3 py-3">หมายเหตุค่าอื่นๆ</th>
+                  <th class="px-3 py-3 text-amber-900 bg-amber-50/80 font-bold whitespace-nowrap">แจ้งเพิ่มเติม</th>
+                  <th class="px-3 py-3">กำหนดชำระ</th>
                   <th class="px-3 py-3">ยอดรวมสุทธิ</th>
                   <th class="px-3 py-3 text-center">สร้างบิล</th>
                 </tr>
@@ -351,6 +372,7 @@
                   <th class="px-4 py-4">ส่วนกลาง</th>
                   <th class="px-4 py-4">ที่จอดรถ (ทะเบียน)</th>
                   <th class="px-4 py-4">ค่าอื่นๆ</th>
+                  <th class="px-4 py-4">หมายเหตุ</th>
                   <th class="px-4 py-4">ยอดรวมสุทธิ</th>
                   <th class="px-4 py-4">สถานะบิล</th>
                   <th class="px-4 py-4">LINE</th>
@@ -373,7 +395,47 @@
       <!-- ================= 5. TAB: SETTINGS ================= -->
       <section id="tab-settings" class="space-y-6 hidden">
         <form id="settingsForm" onsubmit="saveSettings(event)" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6 max-w-4xl">
-          <h3 class="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3 flex items-center gap-2">
+          
+          <!-- Google Sheets Database Connection -->
+          <div>
+            <h3 class="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <i data-lucide="database" class="w-5 h-5 text-emerald-600"></i>
+              เชื่อมต่อฐานข้อมูล Google Sheets
+            </h3>
+            <p class="text-xs text-slate-500 mt-1">ใช้ Google Sheets เป็นฐานข้อมูลเก็บข้อมูลห้องพัก บิล และตั้งค่าทั้งหมดแบบ Real-time</p>
+
+            <div class="mt-4 space-y-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Google Apps Script Web App URL *</label>
+                <div class="flex gap-2">
+                  <input type="url" id="settingGoogleScriptUrl" placeholder="https://script.google.com/macros/s/AKfycb.../exec" class="flex-1 border border-slate-200 rounded-lg p-2.5 text-xs font-mono focus:outline-emerald-500 bg-slate-50">
+                  <button type="button" onclick="testGoogleSheetConnection()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+                    <i data-lucide="zap" class="w-4 h-4"></i>
+                    ทดสอบเชื่อมต่อ
+                  </button>
+                </div>
+                <div id="sheetTestResultMsg" class="mt-2 text-xs"></div>
+              </div>
+
+              <!-- Setup Helper Box -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-600 space-y-2">
+                <p class="font-bold text-slate-800 flex items-center gap-1.5">
+                  <i data-lucide="book-open" class="w-4 h-4 text-blue-600"></i>
+                  วิธีสร้าง Google Sheets & นำ Web App URL มาใส่ (ทำเพียงครั้งเดียว):
+                </p>
+                <ol class="list-decimal list-inside space-y-1 leading-relaxed">
+                  <li>เปิด Google Sheets ใหม่ที่ <a href="https://sheets.new" target="_blank" class="text-blue-600 underline font-semibold">sheets.new</a></li>
+                  <li>คลิกเมนู <strong>ส่วนขยาย (Extensions)</strong> ➔ <strong>Apps Script</strong></li>
+                  <li>ลบโค้ดเดิมทั้งหมด แล้วคัดลอกโค้ดจากไฟล์ <code>google-apps-script.js</code> ไปวางทั้งหมด</li>
+                  <li>กด <strong>ทำให้ใช้งานได้ (Deploy)</strong> ➔ <strong>การทำให้ใช้งานได้ใหม่ (New deployment)</strong></li>
+                  <li>เลือกประเภทเป็น <strong>เว็บแอป (Web app)</strong> ➔ เลือก <strong>ผู้ที่มีสิทธิ์เข้าถึง (Who has access): ทุกคน (Anyone)</strong> ➔ กด Deploy</li>
+                  <li>คัดลอก <strong>URL เว็บแอป (Web App URL)</strong> มาวางลงในช่องด้านบนนี้</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+
+          <h3 class="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3 pt-4 flex items-center gap-2">
             <i data-lucide="sliders" class="w-5 h-5 text-blue-600"></i>
             ตั้งค่าข้อมูลหอพัก & อัตราค่าน้ำ-ไฟ
           </h3>
@@ -433,12 +495,12 @@
             </div>
             
             <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-600 space-y-2">
-              <p class="font-bold text-slate-800">💡 วิธีรับ LINE Channel Access Token ฟรี (ทำเพียงครั้งเดียว):</p>
+              <p class="font-bold text-slate-800">💡 การตั้งค่า LINE Official Account ให้ผู้เช่าแอดแล้วบอทตอบทันที:</p>
               <ol class="list-decimal list-inside space-y-1">
-                <li>เข้าไปที่ <a href="https://developers.line.biz" target="_blank" class="text-blue-600 underline font-medium">https://developers.line.biz</a> แล้ว Login ด้วย LINE ของคุณ</li>
-                <li>สร้าง Provider และสร้าง <strong>Create a Messaging API channel</strong></li>
-                <li>ไปที่แท็บ <strong>Messaging API</strong> เลื่อนลงมาด้านล่างสุด ตรงหัวข้อ <em>Channel access token</em> กดปุ่ม <strong>Issue</strong></li>
-                <li>คัดลอก Token ยาวๆ นั้นมาวางในช่องด้านบนนี้ แล้วกด "บันทึกการตั้งค่า"</li>
+                <li>เข้าไปที่ <a href="https://manager.line.biz" target="_blank" class="text-blue-600 underline font-medium">manager.line.biz</a> ➔ การตั้งค่า ➔ <strong>การตั้งค่าการตอบกลับ (Response settings)</strong></li>
+                <li>โหมดตอบกลับ: เลือก <strong>บอท (Bot)</strong></li>
+                <li><strong>ข้อความตอบกลับอัตโนมัติ (Auto-response messages): ให้กด "ปิด (Disabled)"</strong> (เพื่อไม่ให้มีข้อความ 'ไม่สามารถตอบข้อความใดๆ ได้' มาขัดขวาง)</li>
+                <li>ไปที่ <a href="https://developers.line.biz" target="_blank" class="text-blue-600 underline font-medium">developers.line.biz</a> ➔ แท็บ Messaging API ➔ <strong>Webhook URL ให้ใส่ Google Apps Script Web App URL</strong> และเปิด <strong>Use Webhook</strong></li>
               </ol>
             </div>
           </div>
@@ -459,7 +521,7 @@
 
   <!-- 1. Room Modal (Add/Edit) -->
   <div id="roomModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <h3 id="roomModalTitle" class="font-bold text-slate-800 text-base">เพิ่มห้องพักใหม่</h3>
         <button onclick="closeRoomModal()" class="text-slate-400 hover:text-slate-600">
@@ -550,7 +612,7 @@
           <div>
             <label class="block text-[11px] font-semibold text-slate-600">LINE User ID (สำหรับรับบิลเข้า LINE)</label>
             <input type="text" id="formTenantLineId" placeholder="เช่น U1234567890abcdef..." class="w-full border border-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-blue-500 bg-white">
-            <p class="text-[10px] text-slate-400 mt-1">ผู้เช่าสามารถแอดไลน์ Official ของหอพักแล้วทักมา บอทจะแจ้ง User ID อัตโนมัติ</p>
+            <p class="text-[10px] text-slate-400 mt-1">ผู้เช่าสามารถทักเลขห้อง หรือชื่อใน LINE บอทจะผูกให้อัตโนมัติ</p>
           </div>
         </div>
 
@@ -575,7 +637,7 @@
 
   <!-- 2. Create Bill Modal -->
   <div id="billModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <h3 class="font-bold text-slate-800 text-base">ออกบิลใบแจ้งหนี้ใหม่</h3>
         <button onclick="closeBillModal()" class="text-slate-400 hover:text-slate-600">
@@ -610,11 +672,19 @@
 
         <!-- Electricity -->
         <div class="border border-slate-200 rounded-xl p-3 bg-amber-50/50 space-y-2">
-          <p class="text-xs font-bold text-amber-800 flex items-center gap-1.5">
-            <i data-lucide="zap" class="w-4 h-4 text-amber-600"></i>
-            ค่าไฟฟ้า (อัตรา <span id="rateLabelElec">8</span> บ./หน่วย)
-          </p>
-          <div class="grid grid-cols-3 gap-2">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+              <i data-lucide="zap" class="w-4 h-4 text-amber-600"></i>
+              ค่าไฟฟ้า
+            </p>
+            <div class="flex items-center bg-amber-200/60 p-0.5 rounded-lg text-[11px]">
+              <button type="button" onclick="setBillElecMode('meter')" id="btnBillElecMeter" class="px-2 py-0.5 rounded font-semibold bg-white text-amber-900 shadow-xs">⚡ จดมิเตอร์เอง</button>
+              <button type="button" onclick="setBillElecMode('manual')" id="btnBillElecManual" class="px-2 py-0.5 rounded font-semibold text-amber-800 hover:text-amber-950">💵 ราคาเหมา</button>
+            </div>
+          </div>
+
+          <!-- Meter Mode -->
+          <div id="billElecMeterGroup" class="grid grid-cols-4 gap-2">
             <div>
               <label class="text-[10px] text-slate-500">มิเตอร์เดิม</label>
               <input type="number" id="formBillPrevElec" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white">
@@ -624,19 +694,37 @@
               <input type="number" id="formBillCurrElec" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white">
             </div>
             <div>
-              <label class="text-[10px] text-slate-500">คำนวณเงิน</label>
-              <div id="calcElecAmount" class="font-bold text-slate-700 text-sm py-1">0 ฿</div>
+              <label class="text-[10px] text-slate-500">ราคา/หน่วย</label>
+              <input type="number" step="0.5" id="formBillElecRate" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white font-semibold">
             </div>
+            <div>
+              <label class="text-[10px] text-slate-500">คำนวณเงิน</label>
+              <div id="calcElecAmount" class="font-bold text-amber-700 text-xs py-1.5">0 ฿</div>
+            </div>
+          </div>
+
+          <!-- Manual Mode -->
+          <div id="billElecManualGroup" class="hidden">
+            <label class="text-[10px] font-semibold text-amber-800">ระบุยอดเงินค่าไฟเหมาจ่าย (บาท)</label>
+            <input type="number" id="formBillElecManualAmount" value="0" oninput="calculateBillTotal()" placeholder="0" class="w-full border border-amber-300 rounded-lg p-2 text-xs bg-white focus:outline-amber-500 font-bold">
           </div>
         </div>
 
         <!-- Water -->
         <div class="border border-slate-200 rounded-xl p-3 bg-cyan-50/50 space-y-2">
-          <p class="text-xs font-bold text-cyan-800 flex items-center gap-1.5">
-            <i data-lucide="droplet" class="w-4 h-4 text-cyan-600"></i>
-            ค่าน้ำประปา (อัตรา <span id="rateLabelWater">18</span> บ./หน่วย)
-          </p>
-          <div class="grid grid-cols-3 gap-2">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-bold text-cyan-800 flex items-center gap-1.5">
+              <i data-lucide="droplet" class="w-4 h-4 text-cyan-600"></i>
+              ค่าน้ำประปา
+            </p>
+            <div class="flex items-center bg-cyan-200/60 p-0.5 rounded-lg text-[11px]">
+              <button type="button" onclick="setBillWaterMode('meter')" id="btnBillWaterMeter" class="px-2 py-0.5 rounded font-semibold bg-white text-cyan-900 shadow-xs">💧 จดมิเตอร์เอง</button>
+              <button type="button" onclick="setBillWaterMode('manual')" id="btnBillWaterManual" class="px-2 py-0.5 rounded font-semibold text-cyan-800 hover:text-cyan-950">💵 ราคาเหมา</button>
+            </div>
+          </div>
+
+          <!-- Meter Mode -->
+          <div id="billWaterMeterGroup" class="grid grid-cols-4 gap-2">
             <div>
               <label class="text-[10px] text-slate-500">มิเตอร์เดิม</label>
               <input type="number" id="formBillPrevWater" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white">
@@ -646,9 +734,19 @@
               <input type="number" id="formBillCurrWater" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white">
             </div>
             <div>
-              <label class="text-[10px] text-slate-500">คำนวณเงิน</label>
-              <div id="calcWaterAmount" class="font-bold text-slate-700 text-sm py-1">0 ฿</div>
+              <label class="text-[10px] text-slate-500">ราคา/หน่วย</label>
+              <input type="number" step="0.5" id="formBillWaterRate" oninput="calculateBillTotal()" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white font-semibold">
             </div>
+            <div>
+              <label class="text-[10px] text-slate-500">คำนวณเงิน</label>
+              <div id="calcWaterAmount" class="font-bold text-cyan-700 text-xs py-1.5">0 ฿</div>
+            </div>
+          </div>
+
+          <!-- Manual Mode -->
+          <div id="billWaterManualGroup" class="hidden">
+            <label class="text-[10px] font-semibold text-cyan-800">ระบุยอดเงินค่าน้ำเหมาจ่าย (บาท)</label>
+            <input type="number" id="formBillWaterManualAmount" value="0" oninput="calculateBillTotal()" placeholder="0" class="w-full border border-cyan-300 rounded-lg p-2 text-xs bg-white focus:outline-cyan-500 font-bold">
           </div>
         </div>
 
@@ -676,15 +774,35 @@
           </div>
         </div>
 
+        <!-- Due Date Field -->
+        <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <label class="block text-xs font-bold text-blue-900 mb-0.5 flex items-center gap-1.5">
+              <i data-lucide="calendar" class="w-4 h-4 text-blue-600"></i>
+              กำหนดชำระภายใน (ไม่บังคับ)
+            </label>
+            <p class="text-[11px] text-blue-700">สามารถเลือกวันที่ครบกำหนด หรือปล่อยว่างไว้ให้เป็น "-" ได้</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <input type="date" id="formBillDueDate" class="border border-blue-300 rounded-lg p-2 text-xs bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-blue-500">
+            <button type="button" onclick="document.getElementById('formBillDueDate').value=''" class="text-xs text-slate-500 hover:text-rose-600 px-2 py-1 bg-white border border-slate-200 rounded-lg" title="ล้างวันที่">ล้าง</button>
+          </div>
+        </div>
+
+        <!-- Additional Bill Note / Remark Field -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+            <i data-lucide="message-square" class="w-4 h-4 text-blue-600"></i>
+            หมายเหตุ / รายละเอียดเพิ่มเติมในบิล (ไม่บังคับ)
+          </label>
+          <input type="text" id="formBillRemark" placeholder="เช่น ค่าเช่าตู้เย็น, ค่าปรับล่าช้า หรือข้อความถึงผู้เช่า" class="w-full border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-blue-500 bg-white">
+        </div>
+
         <!-- Grand Total Summary Banner -->
         <div class="bg-slate-900 text-white rounded-xl p-3 flex items-center justify-between">
           <div>
             <p class="text-xs text-slate-400">ยอดชำระสุทธิทั้งสิ้น</p>
             <h4 id="calcGrandTotal" class="text-xl font-bold text-emerald-400">0 บาท</h4>
-          </div>
-          <div>
-            <label class="block text-[11px] text-slate-400 mb-1">วันครบกำหนดชำระ</label>
-            <input type="date" id="formBillDueDate" class="bg-slate-800 text-white border border-slate-700 rounded-lg px-2 py-1 text-xs">
           </div>
         </div>
 
@@ -696,10 +814,9 @@
     </div>
   </div>
 
-  <script src="/js/app.js"></script>
-  <script>
-    lucide.createIcons();
-  </script>
+  <!-- Scripts with relative paths for GitHub Pages -->
+  <script src="./config.js?v=2.3"></script>
+  <script src="./js/promptpay.js?v=2.3"></script>
+  <script src="./js/app.js?v=2.3"></script>
 </body>
 </html>
-

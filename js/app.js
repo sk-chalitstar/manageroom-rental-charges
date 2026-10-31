@@ -1086,8 +1086,9 @@ function renderMeter() {
         <td class="px-3 py-3">
           <input type="number" id="m-other-${room.number}" value="${otherVal}" placeholder="0" oninput="toggleTableMeterOtherRemark('${room.number}'); updateMeterRowCalc('${room.number}')" class="w-16 border border-slate-200 rounded px-1.5 py-1 text-xs">
         </td>
-        <td class="px-3 py-3">
-          <input type="text" id="m-remark-${room.number}" value="${remarkVal}" placeholder="ระบุหมายเหตุ" class="w-28 border border-amber-300 rounded px-1.5 py-1 text-xs ${otherVal ? '' : 'hidden'} bg-amber-50/50">
+        <td class="px-3 py-3 bg-amber-50/20">
+          <input type="text" id="m-bill-notice-${room.number}" value="${remarkVal}" placeholder="ข้อความแจ้งในบิล..." class="w-36 border border-amber-300 rounded px-2 py-1 text-xs bg-white text-slate-800 placeholder:text-slate-400 focus:ring-1 focus:ring-amber-500 font-medium">
+          <input type="hidden" id="m-remark-${room.number}" value="${remarkVal}">
         </td>
         <td class="px-3 py-3">
           <input type="date" id="m-duedate-${room.number}" value="${globalDueDateVal}" class="w-28 border border-slate-200 rounded px-1.5 py-1 text-xs" title="กำหนดชำระภายใน (ไม่บังคับ)">
@@ -1286,7 +1287,15 @@ async function createBillFromMeterRow(roomNumber) {
   const licensePlate = document.getElementById(`m-plate-${roomNumber}`)?.value.trim() || '';
   const otherFee = Number(document.getElementById(`m-other-${roomNumber}`)?.value || 0);
   const otherFeeRemark = document.getElementById(`m-remark-${roomNumber}`)?.value.trim() || '';
+  const billNotice = document.getElementById(`m-bill-notice-${roomNumber}`)?.value.trim() || '';
   const dueDate = document.getElementById(`m-duedate-${roomNumber}`)?.value || document.getElementById('meterGlobalDueDate')?.value || '';
+
+  let finalRemark = '';
+  if (otherFeeRemark && billNotice && otherFeeRemark !== billNotice) {
+    finalRemark = `${otherFeeRemark} (${billNotice})`;
+  } else {
+    finalRemark = billNotice || otherFeeRemark || '';
+  }
 
   const elecRate = Number(state.settings.electricRate || 8);
   const waterRate = Number(state.settings.waterRate || 18);
@@ -1312,8 +1321,8 @@ async function createBillFromMeterRow(roomNumber) {
     parkingFee,
     licensePlate,
     otherFee,
-    otherFeeRemark,
-    remark: otherFeeRemark,
+    otherFeeRemark: finalRemark,
+    remark: finalRemark,
     dueDate
   };
 
