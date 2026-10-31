@@ -668,8 +668,12 @@ function toggleCardMeterOtherRemark(roomNumber) {
 
 function toggleTableMeterOtherRemark(roomNumber) {
   const val = Number(document.getElementById(`m-other-${roomNumber}`)?.value || 0);
+  const wrap = document.getElementById(`m-remark-wrap-${roomNumber}`);
   const input = document.getElementById(`m-remark-${roomNumber}`);
-  if (input) {
+  if (wrap) {
+    if (val > 0) wrap.classList.remove('hidden');
+    else wrap.classList.add('hidden');
+  } else if (input) {
     if (val > 0) input.classList.remove('hidden');
     else input.classList.add('hidden');
   }
@@ -1084,11 +1088,15 @@ function renderMeter() {
           <input type="text" id="m-plate-${room.number}" value="${plateVal}" placeholder="ทะเบียนรถ" class="w-24 border border-slate-200 rounded px-1.5 py-1 text-xs">
         </td>
         <td class="px-3 py-3">
-          <input type="number" id="m-other-${room.number}" value="${otherVal}" placeholder="0" oninput="toggleTableMeterOtherRemark('${room.number}'); updateMeterRowCalc('${room.number}')" class="w-16 border border-slate-200 rounded px-1.5 py-1 text-xs">
+          <div class="flex items-center gap-1.5 whitespace-nowrap">
+            <input type="number" id="m-other-${room.number}" value="${otherVal}" placeholder="0" oninput="toggleTableMeterOtherRemark('${room.number}'); updateMeterRowCalc('${room.number}')" class="w-16 border border-slate-200 rounded px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-500 font-medium">
+            <div id="m-remark-wrap-${room.number}" class="${otherVal > 0 ? '' : 'hidden'}">
+              <input type="text" id="m-remark-${room.number}" value="${remarkVal}" placeholder="ระบุเหตุผล เช่น ค่าตู้เย็น" class="w-36 border border-amber-300 rounded px-2 py-1 text-xs bg-amber-50 text-amber-900 placeholder:text-amber-500 focus:outline-amber-500 font-medium shadow-2xs" title="ระบุหมายเหตุค่าอื่นๆ">
+            </div>
+          </div>
         </td>
         <td class="px-3 py-3 bg-amber-50/20">
-          <input type="text" id="m-bill-notice-${room.number}" value="${remarkVal}" placeholder="ข้อความแจ้งในบิล..." class="w-36 border border-amber-300 rounded px-2 py-1 text-xs bg-white text-slate-800 placeholder:text-slate-400 focus:ring-1 focus:ring-amber-500 font-medium">
-          <input type="hidden" id="m-remark-${room.number}" value="${remarkVal}">
+          <input type="text" id="m-bill-notice-${room.number}" placeholder="ข้อความแจ้งในบิล..." class="w-36 border border-amber-300 rounded px-2 py-1 text-xs bg-white text-slate-800 placeholder:text-slate-400 focus:ring-1 focus:ring-amber-500 font-medium">
         </td>
         <td class="px-3 py-3">
           <input type="date" id="m-duedate-${room.number}" value="${globalDueDateVal}" class="w-28 border border-slate-200 rounded px-1.5 py-1 text-xs" title="กำหนดชำระภายใน (ไม่บังคับ)">
@@ -1108,6 +1116,39 @@ function renderMeter() {
   }).join('');
 
   lucide.createIcons();
+}
+
+function updateMeterRowCalc(roomNumber) {
+  const room = state.rooms.find(r => String(r.number) === String(roomNumber));
+  if (!room) return;
+
+  const latest = getRoomLatestMeters(roomNumber);
+  const prevElec = latest.elec;
+  const currElecInput = document.getElementById(`m-curr-elec-${roomNumber}`)?.value;
+  const currElec = (currElecInput !== '' && currElecInput !== undefined) ? Number(currElecInput) : prevElec;
+  const elecRate = Number(state.settings.electricRate || 8);
+  const diffElec = Math.max(0, currElec - prevElec);
+  const elecAmount = Math.round(diffElec * elecRate);
+  const diffElecEl = document.getElementById(`m-diff-elec-${roomNumber}`);
+  if (diffElecEl) diffElecEl.innerText = `${diffElec} น.`;
+
+  const prevWater = latest.water;
+  const currWaterInput = document.getElementById(`m-curr-water-${roomNumber}`)?.value;
+  const currWater = (currWaterInput !== '' && currWaterInput !== undefined) ? Number(currWaterInput) : prevWater;
+  const waterRate = Number(state.settings.waterRate || 18);
+  const diffWater = Math.max(0, currWater - prevWater);
+  const waterAmount = Math.round(diffWater * waterRate);
+  const diffWaterEl = document.getElementById(`m-diff-water-${roomNumber}`);
+  if (diffWaterEl) diffWaterEl.innerText = `${diffWater} น.`;
+
+  const rent = Number(document.getElementById(`m-rent-${roomNumber}`)?.value || 0);
+  const common = Number(document.getElementById(`m-common-${roomNumber}`)?.value || 0);
+  const parking = Number(document.getElementById(`m-parking-${roomNumber}`)?.value || 0);
+  const other = Number(document.getElementById(`m-other-${roomNumber}`)?.value || 0);
+
+  const total = rent + common + parking + other + elecAmount + waterAmount;
+  const totalEl = document.getElementById(`m-total-${roomNumber}`);
+  if (totalEl) totalEl.innerText = `${total.toLocaleString()} ฿`;
 }
 
 function updateMeterCardCalc(roomNumber) {

@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="./config.js"></script>
   <style>
     body { font-family: 'Sarabun', sans-serif; }
     @media print {
@@ -21,7 +22,7 @@
 
   <div class="no-print mb-4 flex items-center gap-3">
     <button onclick="window.print()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-sm text-sm flex items-center gap-2">
-      พิมพ์ใบแจ้งหนี้ (Print / Save as PDF)
+      🖨️ พิมพ์เอกสาร (Print / Save as PDF)
     </button>
     <button onclick="window.close()" class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm">
       ปิดหน้านี้
@@ -38,20 +39,21 @@
       </div>
       <div class="text-right">
         <h2 id="docTypeTitle" class="text-lg font-bold text-slate-800">ใบแจ้งหนี้ค่าเช่าห้องพัก</h2>
-        <p id="pBillId" class="text-xs text-slate-500 mt-1">เลขที่: BILL-101</p>
-        <p id="pDate" class="text-xs text-slate-500">วันที่: 26/10/2026</p>
+        <p id="pBillId" class="text-xs text-slate-600 mt-1 font-mono font-semibold">เลขที่บิล: -</p>
+        <p id="pDate" class="text-xs text-slate-500">วันที่ออกบิล: -</p>
       </div>
     </div>
 
     <!-- Tenant & Room info -->
     <div class="grid grid-cols-2 gap-4 py-4 border-b border-slate-200 text-xs">
-      <div>
-        <p><span class="font-bold text-slate-700">ห้องพักเลขที่:</span> <span id="pRoomNumber" class="text-base font-bold text-blue-700">101</span></p>
-        <p><span class="font-bold text-slate-700">ชื่อผู้เช่า:</span> <span id="pTenantName">นายสมชาย รักสงบ</span></p>
+      <div class="space-y-1">
+        <p><span class="font-bold text-slate-700">ห้องพักเลขที่:</span> <span id="pRoomNumber" class="text-base font-bold text-blue-700">-</span> <span id="pRoomFloor" class="text-slate-500 font-medium">(ชั้น -)</span></p>
+        <p><span class="font-bold text-slate-700">ประเภทห้อง:</span> <span id="pRoomType" class="font-semibold text-slate-700">-</span></p>
+        <p><span class="font-bold text-slate-700">ชื่อผู้เช่าห้อง:</span> <span id="pTenantName" class="font-semibold text-slate-800">—</span></p>
       </div>
-      <div class="text-right">
-        <p><span class="font-bold text-slate-700">ประจำรอบเดือน:</span> <span id="pMonth" class="font-semibold">มีนาคม 2025</span></p>
-        <p><span class="font-bold text-slate-700">กำหนดชำระภายใน:</span> <span id="pDueDate" class="text-rose-600 font-semibold">05/03/2025</span></p>
+      <div class="text-right space-y-1">
+        <p><span class="font-bold text-slate-700">ประจำรอบเดือน:</span> <span id="pMonth" class="font-semibold">-</span></p>
+        <p><span class="font-bold text-slate-700">กำหนดชำระภายใน:</span> <span id="pDueDate" class="text-rose-600 font-semibold">-</span></p>
       </div>
     </div>
 
@@ -77,12 +79,18 @@
       </tfoot>
     </table>
 
+    <!-- Remark / Extra Notes -->
+    <div id="pRemarkContainer" class="hidden my-3 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+      <span class="font-bold text-slate-700">หมายเหตุ: </span>
+      <span id="pRemarkText" class="text-slate-600"></span>
+    </div>
+
     <!-- Footer Payment info -->
     <div class="mt-8 pt-4 border-t border-slate-200 flex justify-between items-end text-xs">
       <div class="space-y-1">
         <p class="font-bold text-slate-800">ช่องทางการชำระเงิน:</p>
-        <p>พร้อมเพย์ (PromptPay): <span id="pPromptpayId" class="font-mono font-semibold">0812345678</span></p>
-        <p>ชื่อบัญชี: <span id="pPromptpayName">นายสมชาย ผู้ดูแลหอ</span></p>
+        <p>พร้อมเพย์ (PromptPay): <span id="pPromptpayId" class="font-mono font-semibold">-</span></p>
+        <p>ชื่อบัญชี: <span id="pPromptpayName">-</span></p>
         <p class="text-[11px] text-slate-400 mt-2">* กรุณาชำระเงินตามกำหนดเวลาที่ระบุไว้ในใบแจ้งหนี้</p>
       </div>
       <div class="text-center space-y-8">
@@ -95,37 +103,109 @@
   <script>
     async function loadPrintData() {
       const urlParams = new URLSearchParams(window.location.search);
-      const billId = urlParams.get('billId');
+      const billId = urlParams.get('billId') || urlParams.get('id');
+      const gasUrl = urlParams.get('gasUrl');
+      if (gasUrl) CONFIG.setScriptUrl(gasUrl);
+
       if (!billId) return;
 
-      try {
-        const res = await fetch(`/api/bills/${billId}`);
-        const result = await res.json();
-        if (!result.success) return;
+      const scriptUrl = CONFIG.getScriptUrl();
 
-        const { bill, room, settings } = result.data;
+      try {
+        let bill = null;
+        let room = null;
+        let settings = {};
+
+        if (scriptUrl) {
+          const res = await fetch(`${scriptUrl}?action=getBill&id=${encodeURIComponent(billId)}`);
+          const result = await res.json();
+          if (result.success && result.data) {
+            bill = result.data.bill;
+            room = result.data.room;
+            settings = result.data.settings || {};
+          }
+        }
+
+        if (!bill) {
+          const savedBills = JSON.parse(localStorage.getItem('dorm_bills') || '[]');
+          bill = savedBills.find(b => String(b.id) === String(billId));
+          const savedRooms = JSON.parse(localStorage.getItem('dorm_rooms') || '[]');
+          room = savedRooms.find(r => String(r.number) === String(bill?.roomNumber));
+          settings = JSON.parse(localStorage.getItem('dorm_settings') || '{}');
+        }
+
+        if (!bill) return;
+
+        const tenantName = room?.tenant?.name || bill.tenantName || '—';
+        const formattedDate = typeof formatThaiDateTime === 'function' ? formatThaiDateTime(bill.createdAt) : bill.createdAt;
+        const formattedDueDate = bill.dueDate ? (typeof formatThaiDate === 'function' ? formatThaiDate(bill.dueDate) : bill.dueDate) : '-';
+        const formattedMonth = typeof formatMonthName === 'function' ? formatMonthName(bill.month) : bill.month;
 
         document.getElementById('pDormName').innerText = settings.dormName || 'หอพักสุขสบาย';
         document.getElementById('pDormAddress').innerText = settings.dormAddress || '';
         document.getElementById('pDormPhone').innerText = `โทร: ${settings.dormPhone || '-'}`;
 
         document.getElementById('docTypeTitle').innerText = bill.status === 'paid' ? 'ใบเสร็จรับเงิน (RECEIPT)' : 'ใบแจ้งหนี้ (INVOICE)';
-        document.getElementById('pBillId').innerText = `เลขที่: ${bill.id}`;
-        document.getElementById('pDate').innerText = `วันที่: ${new Date(bill.createdAt || Date.now()).toLocaleDateString('th-TH')}`;
+        document.getElementById('pBillId').innerText = `เลขที่บิล: ${bill.id}`;
+        document.getElementById('pDate').innerText = `วันที่ออกบิล: ${formattedDate}`;
 
         document.getElementById('pRoomNumber').innerText = bill.roomNumber;
-        document.getElementById('pTenantName').innerText = room?.tenant?.name || '—';
-        document.getElementById('pMonth').innerText = bill.month;
-        document.getElementById('pDueDate').innerText = bill.dueDate || 'ตามกำหนด';
+        document.getElementById('pRoomFloor').innerText = `(ชั้น ${room?.floor || bill.floor || '-'})`;
+        document.getElementById('pRoomType').innerText = room?.type || bill.roomType || 'มาตรฐาน';
+        document.getElementById('pTenantName').innerText = tenantName;
+        document.getElementById('pMonth').innerText = formattedMonth;
+        document.getElementById('pDueDate').innerText = (formattedDueDate && formattedDueDate !== '-') ? formattedDueDate : '-';
 
-        document.getElementById('pPromptpayId').innerText = settings.promptpayId || '-';
+        document.getElementById('pPromptpayId').innerText = (/^\d{9}$/.test(String(settings.promptpayId || '')) ? '0' + String(settings.promptpayId) : (settings.promptpayId || '-'));
         document.getElementById('pPromptpayName').innerText = settings.promptpayName || '-';
 
+        // Remark note
+        const billRemark = bill.otherFeeRemark || bill.remark || '';
+        const remarkBox = document.getElementById('pRemarkContainer');
+        if (billRemark) {
+          remarkBox.classList.remove('hidden');
+          document.getElementById('pRemarkText').innerText = billRemark;
+        } else {
+          remarkBox.classList.add('hidden');
+        }
+
         const items = [
-          { name: '1. ค่าเช่าห้องพัก', units: '1 เดือน', rate: Number(bill.rent).toLocaleString(), amount: Number(bill.rent) },
-          { name: `2. ค่าไฟฟ้า (เลขเดิม ${bill.prevElectricMeter} - เลขใหม่ ${bill.currElectricMeter})`, units: `${bill.electricUnits} หน่วย`, rate: `${bill.electricRate} ฿`, amount: Number(bill.electricAmount) },
-          { name: `3. ค่าน้ำประปา (เลขเดิม ${bill.prevWaterMeter} - เลขใหม่ ${bill.currWaterMeter})`, units: `${bill.waterUnits} หน่วย`, rate: `${bill.waterRate} ฿`, amount: Number(bill.waterAmount) },
+          { name: '1. ค่าเช่าห้องพัก', units: '1 เดือน', rate: Number(bill.rent).toLocaleString(), amount: Number(bill.rent) }
         ];
+
+        // Electricity
+        if (bill.electricUnits > 0) {
+          items.push({
+            name: `2. ค่าไฟฟ้า (เลขเดิม ${bill.prevElectricMeter} - เลขใหม่ ${bill.currElectricMeter})`,
+            units: `${bill.electricUnits} หน่วย`,
+            rate: `${bill.electricRate || 8} ฿`,
+            amount: Number(bill.electricAmount)
+          });
+        } else {
+          items.push({
+            name: `2. ค่าไฟฟ้า (ราคาเหมา / กำหนดเอง)`,
+            units: `1 รายการ`,
+            rate: `-`,
+            amount: Number(bill.electricAmount)
+          });
+        }
+
+        // Water
+        if (bill.waterUnits > 0) {
+          items.push({
+            name: `3. ค่าน้ำประปา (เลขเดิม ${bill.prevWaterMeter} - เลขใหม่ ${bill.currWaterMeter})`,
+            units: `${bill.waterUnits} หน่วย`,
+            rate: `${bill.waterRate || 18} ฿`,
+            amount: Number(bill.waterAmount)
+          });
+        } else {
+          items.push({
+            name: `3. ค่าน้ำประปา (ราคาเหมา / กำหนดเอง)`,
+            units: `1 รายการ`,
+            rate: `-`,
+            amount: Number(bill.waterAmount)
+          });
+        }
 
         let itemIndex = 4;
         if (bill.commonFee > 0) {
@@ -177,4 +257,3 @@
   </script>
 </body>
 </html>
-

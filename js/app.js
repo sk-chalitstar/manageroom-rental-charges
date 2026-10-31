@@ -668,8 +668,18 @@ function toggleCardMeterOtherRemark(roomNumber) {
 
 function toggleTableMeterOtherRemark(roomNumber) {
   const val = Number(document.getElementById(`m-other-${roomNumber}`)?.value || 0);
+  const wrap = document.getElementById(`m-remark-wrap-${roomNumber}`);
   const input = document.getElementById(`m-remark-${roomNumber}`);
-  if (input) {
+  if (wrap) {
+    if (val > 0) {
+      wrap.classList.remove('hidden');
+      if (input && !input.value) {
+        input.focus();
+      }
+    } else {
+      wrap.classList.add('hidden');
+    }
+  } else if (input) {
     if (val > 0) input.classList.remove('hidden');
     else input.classList.add('hidden');
   }

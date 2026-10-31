@@ -9,95 +9,126 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="./config.js"></script>
+  <script src="./js/promptpay.js"></script>
   <style>
     body { font-family: 'Prompt', sans-serif; }
   </style>
 </head>
-<body class="bg-slate-100 min-h-screen py-8 px-4 flex justify-center items-start">
+<body class="bg-slate-100 min-h-screen py-6 px-3 flex justify-center items-start">
 
   <div id="loading" class="text-center py-20 text-slate-500">
     <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-    <p>กำลังโหลดข้อมูลบิลค่าห้องพัก...</p>
+    <p class="font-medium text-sm">กำลังโหลดข้อมูลบิลค่าห้องพัก...</p>
   </div>
 
   <div id="billCard" class="hidden bg-white max-w-md w-full rounded-3xl shadow-xl overflow-hidden border border-slate-200">
     <!-- Header Banner -->
-    <div id="bannerHeader" class="bg-blue-600 text-white p-6 text-center">
-      <h1 id="dormTitle" class="text-xl font-bold">หอพักสุขสบาย</h1>
-      <p id="roomTitle" class="text-sm text-blue-100 mt-1">ใบแจ้งหนี้ห้อง 101</p>
-      <div id="statusBadge" class="mt-3 inline-block px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white">
+    <div id="bannerHeader" class="bg-blue-600 text-white p-6 text-center transition-colors">
+      <h1 id="dormTitle" class="text-xl font-bold tracking-tight">-:- หอพัก -:-</h1>
+      <p id="roomTitle" class="text-base font-semibold text-blue-100 mt-1">ใบแจ้งหนี้ห้อง -</p>
+      
+      <!-- Tenant Name & Bill Info Header -->
+      <div class="mt-3 bg-white/15 backdrop-blur-sm rounded-xl py-2.5 px-3 text-xs text-white/95 space-y-1.5">
+        <div class="flex items-center justify-between font-bold text-sm">
+          <p id="tenantNameHeader">ผู้เช่า: —</p>
+          <span id="roomTypeHeader" class="text-[11px] bg-white/20 px-2 py-0.5 rounded-md font-medium text-blue-50">ชั้น - | มาตรฐาน</span>
+        </div>
+        <div class="flex items-center justify-between text-[11px] text-blue-100 pt-1 border-t border-white/20">
+          <span id="billIdHeader">เลขที่บิล: —</span>
+          <span id="billDateHeader">วันที่ออกบิล: —</span>
+        </div>
+      </div>
+
+      <div id="statusBadge" class="mt-3 inline-block px-4 py-1 rounded-full text-xs font-semibold bg-white/20 text-white shadow-sm">
         รอการชำระเงิน
       </div>
     </div>
 
     <!-- Main Content -->
-    <div class="p-6 space-y-5">
+    <div class="p-5 space-y-5">
       <!-- Total Due Banner -->
       <div class="text-center bg-slate-50 border border-slate-100 rounded-2xl p-4">
-        <p class="text-xs text-slate-500">ยอดที่ต้องชำระทั้งสิ้น</p>
+        <p class="text-xs text-slate-500 font-medium">ยอดที่ต้องชำระทั้งสิ้น</p>
         <h2 id="grandTotalText" class="text-3xl font-extrabold text-blue-600 mt-1">0 ฿</h2>
-        <p id="dueDateText" class="text-xs text-rose-500 font-medium mt-1">กำหนดชำระภายใน: 5 มีนาคม 2025</p>
+        <p id="dueDateText" class="text-xs text-rose-500 font-medium mt-1">📅 กำหนดชำระภายใน: -</p>
       </div>
 
       <!-- Itemized Breakdown -->
-      <div class="space-y-2 text-sm border-t border-b border-slate-100 py-4">
-        <div class="flex justify-between text-slate-600">
-          <span>ค่าเช่าห้องพัก</span>
-          <span id="rentAmount" class="font-semibold text-slate-800">0 ฿</span>
+      <div class="space-y-2.5 text-sm border-t border-b border-slate-100 py-4">
+        <div class="flex justify-between items-center text-slate-600">
+          <span>1. ค่าเช่าห้องพัก</span>
+          <span id="rentAmount" class="font-bold text-slate-800">0 ฿</span>
         </div>
-        <div class="flex justify-between text-slate-600">
+
+        <div class="flex justify-between items-start text-slate-600">
           <div>
-            <span>ค่าไฟฟ้า</span>
-            <span id="elecDetail" class="text-xs text-slate-400 block">(0 หน่วย @ 8฿)</span>
+            <span>2. ค่าไฟฟ้า</span>
+            <span id="elecDetail" class="text-xs text-slate-400 block mt-0.5">(0 หน่วย)</span>
           </div>
-          <span id="elecAmount" class="font-semibold text-slate-800">0 ฿</span>
+          <span id="elecAmount" class="font-bold text-slate-800">0 ฿</span>
         </div>
-        <div class="flex justify-between text-slate-600">
+
+        <div class="flex justify-between items-start text-slate-600">
           <div>
-            <span>ค่าน้ำประปา</span>
-            <span id="waterDetail" class="text-xs text-slate-400 block">(0 หน่วย @ 18฿)</span>
+            <span>3. ค่าน้ำประปา</span>
+            <span id="waterDetail" class="text-xs text-slate-400 block mt-0.5">(0 หน่วย)</span>
           </div>
-          <span id="waterAmount" class="font-semibold text-slate-800">0 ฿</span>
+          <span id="waterAmount" class="font-bold text-slate-800">0 ฿</span>
         </div>
-        <div class="flex justify-between text-slate-600">
-          <span>ค่าส่วนกลาง</span>
-          <span id="commonAmount" class="font-semibold text-slate-800">0 ฿</span>
+
+        <div id="commonRow" class="flex justify-between items-center text-slate-600">
+          <span>4. ค่าส่วนกลาง</span>
+          <span id="commonAmount" class="font-bold text-slate-800">0 ฿</span>
         </div>
-        <div id="parkingRow" class="hidden flex justify-between text-slate-600">
+
+        <div id="parkingRow" class="hidden flex justify-between items-start text-slate-600">
           <div>
-            <span>ค่าที่จอดรถ</span>
-            <span id="licensePlateDetail" class="text-xs text-slate-400 block"></span>
+            <span>5. ค่าที่จอดรถ</span>
+            <span id="licensePlateDetail" class="text-xs text-slate-400 block mt-0.5"></span>
           </div>
-          <span id="parkingAmount" class="font-semibold text-slate-800">0 ฿</span>
+          <span id="parkingAmount" class="font-bold text-slate-800">0 ฿</span>
         </div>
-        <div id="otherRow" class="hidden flex justify-between text-slate-600">
-          <span id="otherRemark">อื่นๆ</span>
-          <span id="otherAmount" class="font-semibold text-slate-800">0 ฿</span>
+
+        <div id="otherRow" class="hidden flex justify-between items-start text-slate-600">
+          <div>
+            <span id="otherRemark">6. อื่นๆ</span>
+          </div>
+          <span id="otherAmount" class="font-bold text-slate-800">0 ฿</span>
+        </div>
+      </div>
+
+      <!-- Remark Notice -->
+      <div id="tenantRemarkBox" class="hidden p-3 bg-amber-50/90 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2">
+        <i data-lucide="info" class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"></i>
+        <div>
+          <span class="font-bold block">หมายเหตุ / รายละเอียดเพิ่มเติม:</span>
+          <span id="tenantRemarkText" class="text-amber-800 leading-relaxed"></span>
         </div>
       </div>
 
       <!-- PromptPay QR Code Section -->
-      <div id="qrSection" class="bg-blue-50/60 border border-blue-100 rounded-2xl p-5 text-center space-y-3">
+      <div id="qrSection" class="bg-blue-50/70 border border-blue-100 rounded-2xl p-5 text-center space-y-3">
         <div class="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700">
           <i data-lucide="scan-line" class="w-4 h-4 text-blue-600"></i>
           สแกนจ่ายผ่าน Thai QR PromptPay
         </div>
 
-        <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 inline-block">
-          <img id="promptpayQrImg" src="" alt="PromptPay QR Code" class="w-52 h-52 mx-auto">
+        <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 inline-block">
+          <img id="promptpayQrImg" src="" alt="PromptPay QR Code" class="w-52 h-52 mx-auto object-contain">
         </div>
 
         <div class="text-xs text-slate-600 space-y-1">
-          <p class="font-semibold text-slate-800" id="promptpayAccountName">ชื่อบัญชี: -</p>
-          <p class="text-slate-500" id="promptpayTargetId">พร้อมเพย์: -</p>
-          <p class="text-[11px] text-emerald-600 font-medium">✓ ยอดเงินถูกระบุไว้ใน QR แล้ว สามารถสแกนจ่ายได้ทันที</p>
+          <p class="font-bold text-slate-800 text-sm" id="promptpayAccountName">ชื่อบัญชี: ผู้ดูแลหอพัก</p>
+          <p class="text-slate-500 font-mono" id="promptpayTargetId">พร้อมเพย์: -</p>
+          <p class="text-[11px] text-emerald-600 font-medium">✓ ยอดเงินระบุไว้ใน QR Code เรียบร้อย สแกนจ่ายได้ทันที</p>
         </div>
       </div>
 
       <!-- Contact Info -->
       <div class="text-center text-xs text-slate-400 space-y-1 pt-2">
-        <p id="contactPhone">ติดต่อผู้ดูแลหอพัก: 081-234-5678</p>
-        <p class="text-[10px]">เมื่อโอนเงินแล้ว กรุณาส่งสลิปยืนยันใน LINE อีกครั้ง</p>
+        <p id="contactPhone">ติดต่อผู้ดูแล: -</p>
+        <p class="text-[11px]">เมื่อโอนเงินแล้ว กรุณาส่งสลิปยืนยันการชำระเงินใน LINE</p>
       </div>
     </div>
   </div>
@@ -105,67 +136,173 @@
   <script>
     async function loadTenantBill() {
       const urlParams = new URLSearchParams(window.location.search);
-      const billId = urlParams.get('billId');
+      const billId = urlParams.get('billId') || urlParams.get('id');
+      const gasUrlFromParam = urlParams.get('gasUrl');
+
+      if (gasUrlFromParam) {
+        CONFIG.setScriptUrl(gasUrlFromParam);
+      }
 
       if (!billId) {
-        document.getElementById('loading').innerHTML = '<p class="text-rose-500">ไม่พบรหัสบิล</p>';
+        document.getElementById('loading').innerHTML = '<p class="text-rose-500 font-semibold">⚠️ ไม่พบรหัสบิลในลิงก์</p>';
         return;
       }
 
-      try {
-        const res = await fetch(`/api/bills/${billId}`);
-        const result = await res.json();
+      const scriptUrl = CONFIG.getScriptUrl();
 
-        if (!result.success || !result.data) {
-          document.getElementById('loading').innerHTML = '<p class="text-rose-500">ไม่พบบิลค่าเช่านี้ในระบบ</p>';
+      try {
+        let billData = null;
+        let roomData = null;
+        let settings = {};
+
+        // Fetch from Google Apps Script Web App
+        if (scriptUrl) {
+          try {
+            const res = await fetch(`${scriptUrl}?action=getBill&id=${encodeURIComponent(billId)}`);
+            const result = await res.json();
+            if (result.success && result.data) {
+              billData = result.data.bill;
+              roomData = result.data.room;
+              settings = result.data.settings || {};
+            }
+          } catch (e) {
+            console.warn('Direct fetch failed, checking fallback:', e);
+          }
+        }
+
+        // Fallback to localStorage (if viewed on same device)
+        if (!billData) {
+          const savedBills = JSON.parse(localStorage.getItem('dorm_bills') || '[]');
+          billData = savedBills.find(b => String(b.id) === String(billId));
+          const savedRooms = JSON.parse(localStorage.getItem('dorm_rooms') || '[]');
+          roomData = savedRooms.find(r => String(r.number) === String(billData?.roomNumber));
+          settings = JSON.parse(localStorage.getItem('dorm_settings') || '{}');
+        }
+
+        if (!billData) {
+          document.getElementById('loading').innerHTML = `
+            <div class="p-6 bg-white rounded-2xl shadow-sm border border-slate-200 max-w-sm mx-auto">
+              <p class="text-rose-500 font-bold text-base mb-2">❌ ไม่พบบิลค่าเช่านี้ในระบบ</p>
+              <p class="text-xs text-slate-500 leading-relaxed">รหัสบิล: <span class="font-mono font-semibold">${billId}</span></p>
+              <p class="text-[11px] text-slate-400 mt-2">อาจเป็นเพราะเพิ่งสร้างบิลใหม่หรือลิงก์ไม่สมบูรณ์ โปรดติดต่อผู้ดูแลหอพัก</p>
+            </div>
+          `;
           return;
         }
 
-        const { bill, room, settings, qrDataUrl } = result.data;
+        const bill = billData;
+        const tenantName = (roomData?.tenant?.name) || bill.tenantName || 'ผู้เช่าห้องพัก';
+        const formattedMonth = typeof formatMonthName === 'function' ? formatMonthName(bill.month) : bill.month;
+        const formattedCreatedDate = typeof formatThaiDateTime === 'function' ? formatThaiDateTime(bill.createdAt) : bill.createdAt;
+        const formattedDueDate = bill.dueDate ? (typeof formatThaiDate === 'function' ? formatThaiDate(bill.dueDate) : bill.dueDate) : '-';
 
-        document.getElementById('dormTitle').innerText = settings.dormName || 'หอพักสุขสบาย';
-        document.getElementById('roomTitle').innerText = `ใบแจ้งหนี้ห้อง ${bill.roomNumber} (${bill.month})`;
+        // Header
+        const floor = roomData?.floor || bill.floor || '-';
+        const type = roomData?.type || bill.roomType || 'มาตรฐาน';
+        document.getElementById('dormTitle').innerText = settings.dormName || '-:- หอพัก -:-';
+        document.getElementById('roomTitle').innerText = `ใบแจ้งหนี้ห้อง ${bill.roomNumber} (${formattedMonth})`;
+        document.getElementById('tenantNameHeader').innerText = `👤 ผู้เช่า: ${tenantName}`;
+        document.getElementById('roomTypeHeader').innerText = `ชั้น ${floor} | ${type}`;
+        document.getElementById('billIdHeader').innerText = `เลขที่: ${bill.id}`;
+        document.getElementById('billDateHeader').innerText = `วันที่ออก: ${formattedCreatedDate}`;
+
+        // Grand Total & Due
         document.getElementById('grandTotalText').innerText = `${Number(bill.totalAmount).toLocaleString()} บาท`;
-        document.getElementById('dueDateText').innerText = `📅 กำหนดชำระภายใน: ${bill.dueDate || 'ตามกำหนด'}`;
+        document.getElementById('dueDateText').innerText = `📅 กำหนดชำระภายใน: ${(formattedDueDate && formattedDueDate !== '-') ? formattedDueDate : '-'}`;
 
+        // Rent
         document.getElementById('rentAmount').innerText = `${Number(bill.rent).toLocaleString()} ฿`;
+
+        // Electricity
         document.getElementById('elecAmount').innerText = `${Number(bill.electricAmount).toLocaleString()} ฿`;
-        document.getElementById('elecDetail').innerText = `(${bill.electricUnits} หน่วย: ${bill.prevElectricMeter} ➔ ${bill.currElectricMeter})`;
+        if (bill.electricUnits > 0) {
+          document.getElementById('elecDetail').innerText = `(${bill.electricUnits} หน่วย: ${bill.prevElectricMeter} ➔ ${bill.currElectricMeter} @ ${bill.electricRate || 8}฿)`;
+        } else {
+          document.getElementById('elecDetail').innerText = `(ราคาเหมา / กำหนดเอง)`;
+        }
 
+        // Water
         document.getElementById('waterAmount').innerText = `${Number(bill.waterAmount).toLocaleString()} ฿`;
-        document.getElementById('waterDetail').innerText = `(${bill.waterUnits} หน่วย: ${bill.prevWaterMeter} ➔ ${bill.currWaterMeter})`;
+        if (bill.waterUnits > 0) {
+          document.getElementById('waterDetail').innerText = `(${bill.waterUnits} หน่วย: ${bill.prevWaterMeter} ➔ ${bill.currWaterMeter} @ ${bill.waterRate || 18}฿)`;
+        } else {
+          document.getElementById('waterDetail').innerText = `(ราคาเหมา / กำหนดเอง)`;
+        }
 
-        document.getElementById('commonAmount').innerText = `${Number(bill.commonFee || 0).toLocaleString()} ฿`;
+        // Common Fee
+        if (bill.commonFee > 0) {
+          document.getElementById('commonRow').classList.remove('hidden');
+          document.getElementById('commonAmount').innerText = `${Number(bill.commonFee).toLocaleString()} ฿`;
+        } else {
+          document.getElementById('commonRow').classList.add('hidden');
+        }
 
+        // Additional Remark Note
+        const billRemark = bill.otherFeeRemark || bill.remark || '';
+        const remarkBox = document.getElementById('tenantRemarkBox');
+        if (billRemark) {
+          remarkBox.classList.remove('hidden');
+          document.getElementById('tenantRemarkText').innerText = billRemark;
+        } else {
+          remarkBox.classList.add('hidden');
+        }
+
+        // Parking Fee
         if (bill.parkingFee > 0) {
           document.getElementById('parkingRow').classList.remove('hidden');
           document.getElementById('parkingAmount').innerText = `${Number(bill.parkingFee).toLocaleString()} ฿`;
           if (bill.licensePlate) {
             document.getElementById('licensePlateDetail').innerText = `ทะเบียน: ${bill.licensePlate}`;
           }
+        } else {
+          document.getElementById('parkingRow').classList.add('hidden');
         }
 
+        // Other Fee
         if (bill.otherFee > 0) {
           document.getElementById('otherRow').classList.remove('hidden');
-          document.getElementById('otherRemark').innerText = bill.otherFeeRemark || 'อื่นๆ';
+          document.getElementById('otherRemark').innerText = `ค่าอื่นๆ: ${bill.otherFeeRemark || 'เพิ่มเติม'}`;
           document.getElementById('otherAmount').innerText = `${Number(bill.otherFee).toLocaleString()} ฿`;
+        } else {
+          document.getElementById('otherRow').classList.add('hidden');
         }
 
+        // Status & Payment
         if (bill.status === 'paid') {
           document.getElementById('bannerHeader').className = 'bg-emerald-600 text-white p-6 text-center';
           document.getElementById('statusBadge').innerText = '✓ ชำระเงินเรียบร้อยแล้ว';
-          document.getElementById('statusBadge').className = 'mt-3 inline-block px-3 py-1 rounded-full text-xs font-semibold bg-emerald-700 text-white';
+          document.getElementById('statusBadge').className = 'mt-3 inline-block px-4 py-1 rounded-full text-xs font-semibold bg-emerald-700 text-white';
           document.getElementById('grandTotalText').className = 'text-3xl font-extrabold text-emerald-600 mt-1';
-          document.getElementById('dueDateText').innerText = 'ชำระแล้ว ขอบคุณครับ/ค่ะ';
-          document.getElementById('dueDateText').className = 'text-xs text-emerald-600 font-medium mt-1';
+          document.getElementById('dueDateText').innerText = 'ชำระเรียบร้อย ขอบคุณครับ/ค่ะ';
+          document.getElementById('dueDateText').className = 'text-xs text-emerald-600 font-semibold mt-1';
           document.getElementById('qrSection').classList.add('hidden');
         } else {
-          if (qrDataUrl) {
-            document.getElementById('promptpayQrImg').src = qrDataUrl;
-            document.getElementById('promptpayAccountName').innerText = `ชื่อบัญชี: ${settings.promptpayName || 'ผู้ดูแลหอพัก'}`;
-            document.getElementById('promptpayTargetId').innerText = `เบอร์/เลขพร้อมเพย์: ${settings.promptpayId}`;
+          let ppId = settings.promptpayId ? String(settings.promptpayId).trim() : '';
+          if (/^\d{9}$/.test(ppId)) ppId = '0' + ppId;
+          const ppName = settings.promptpayName || 'ผู้ดูแลหอพัก';
+          
+          if (ppId) {
+            let qrUrl = '';
+            if (typeof generatePromptPayQRUrl === 'function') {
+              qrUrl = generatePromptPayQRUrl(ppId, bill.totalAmount);
+            }
+            if (!qrUrl) {
+              qrUrl = `https://promptpay.io/${ppId}/${bill.totalAmount}.png`;
+            }
+
+            const imgEl = document.getElementById('promptpayQrImg');
+            imgEl.src = qrUrl;
+            imgEl.onerror = function() {
+              if (imgEl.src !== `https://promptpay.io/${ppId}/${bill.totalAmount}.png`) {
+                imgEl.src = `https://promptpay.io/${ppId}/${bill.totalAmount}.png`;
+              }
+            };
+            document.getElementById('promptpayAccountName').innerText = `ชื่อบัญชี: ${ppName}`;
+            document.getElementById('promptpayTargetId').innerText = `เบอร์/เลขพร้อมเพย์: ${ppId}`;
           } else {
-            document.getElementById('qrSection').classList.add('hidden');
+            document.getElementById('promptpayQrImg').parentElement.classList.add('hidden');
+            document.getElementById('promptpayAccountName').innerText = `ชื่อบัญชี: ${ppName}`;
+            document.getElementById('promptpayTargetId').innerText = `กรุณาติดต่อผู้ดูแลเพื่อขอช่องทางชำระเงิน`;
           }
         }
 
@@ -173,10 +310,10 @@
 
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('billCard').classList.remove('hidden');
-        lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
 
       } catch (err) {
-        document.getElementById('loading').innerHTML = `<p class="text-rose-500">โหลดข้อมูลไม่สำเร็จ: ${err.message}</p>`;
+        document.getElementById('loading').innerHTML = `<p class="text-rose-500 font-medium">โหลดข้อมูลไม่สำเร็จ: ${err.message}</p>`;
       }
     }
 
@@ -184,4 +321,3 @@
   </script>
 </body>
 </html>
-
