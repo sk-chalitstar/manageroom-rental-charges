@@ -92,8 +92,16 @@ async function apiCall(action, data = {}) {
 
 async function loadAllDataFromSheet() {
   const scriptUrl = CONFIG.getScriptUrl();
+
+  // Read cached settings from localStorage if available
+  let cachedSettings = null;
+  try {
+    const raw = localStorage.getItem('DORM_SETTINGS');
+    if (raw) cachedSettings = JSON.parse(raw);
+  } catch (e) {}
+
   if (!scriptUrl) {
-    state.settings = fallbackData.settings;
+    state.settings = cachedSettings || fallbackData.settings;
     state.rooms = fallbackData.rooms;
     state.bills = fallbackData.bills;
     updateConnectionStatusUI(false);
@@ -105,7 +113,23 @@ async function loadAllDataFromSheet() {
     const res = await fetch(`${scriptUrl}?action=getAll`);
     const result = await res.json();
     if (result.success && result.data) {
-      state.settings = result.data.settings || fallbackData.settings;
+      // Merge: fallback -> cached -> sheet data
+      state.settings = {
+        ...fallbackData.settings,
+        ...(cachedSettings || {}),
+        ...(result.data.settings || {})
+      };
+
+      // Auto-normalize PromptPay ID leading 0 if dropped by Google Sheets
+      if (state.settings.promptpayId && /^\d{9}$/.test(String(state.settings.promptpayId))) {
+        state.settings.promptpayId = '0' + String(state.settings.promptpayId);
+      }
+
+      // Cache settings into localStorage
+      try {
+        localStorage.setItem('DORM_SETTINGS', JSON.stringify(state.settings));
+      } catch (e) {}
+
       state.rooms = result.data.rooms || [];
       state.bills = result.data.bills || [];
       state.isConnected = true;
@@ -115,7 +139,7 @@ async function loadAllDataFromSheet() {
     }
   } catch (err) {
     console.warn('Cannot fetch from Google Sheet, using fallback/cached data:', err);
-    state.settings = fallbackData.settings;
+    state.settings = cachedSettings || fallbackData.settings;
     state.rooms = fallbackData.rooms;
     state.bills = fallbackData.bills;
     state.isConnected = false;
@@ -621,6 +645,42 @@ function toggleTenantFields() {
     tenantBox.classList.add('opacity-40', 'pointer-events-none');
   } else {
     tenantBox.classList.remove('opacity-40', 'pointer-events-none');
+  }
+}
+
+function toggleRoomOtherRemark() {
+  const val = Number(document.getElementById('formRoomOtherFee')?.value || 0);
+  const grp = document.getElementById('roomOtherRemarkGroup');
+  if (grp) {
+    if (val > 0) grp.classList.remove('hidden');
+    else grp.classList.add('hidden');
+  }
+}
+
+function toggleCardMeterOtherRemark(roomNumber) {
+  const val = Number(document.getElementById(`card-m-other-${roomNumber}`)?.value || 0);
+  const grp = document.getElementById(`card-m-remark-group-${roomNumber}`);
+  if (grp) {
+    if (val > 0) grp.classList.remove('hidden');
+    else grp.classList.add('hidden');
+  }
+}
+
+function toggleTableMeterOtherRemark(roomNumber) {
+  const val = Number(document.getElementById(`m-other-${roomNumber}`)?.value || 0);
+  const input = document.getElementById(`m-remark-${roomNumber}`);
+  if (input) {
+    if (val > 0) input.classList.remove('hidden');
+    else input.classList.add('hidden');
+  }
+}
+
+function toggleBillOtherRemark() {
+  const val = Number(document.getElementById('formBillOtherFee')?.value || 0);
+  const grp = document.getElementById('billOtherRemarkGroup');
+  if (grp) {
+    if (val > 0) grp.classList.remove('hidden');
+    else grp.classList.add('hidden');
   }
 }
 
@@ -1155,6 +1215,7 @@ async function createBillFromCard(roomNumber) {
     licensePlate,
     otherFee,
     otherFeeRemark,
+    remark: otherFeeRemark,
     dueDate
   };
 
@@ -1235,6 +1296,7 @@ async function createBillFromMeterRow(roomNumber) {
     licensePlate,
     otherFee,
     otherFeeRemark,
+    remark: otherFeeRemark,
     dueDate
   };
 
@@ -1311,7 +1373,12 @@ function renderBills() {
       : `<span class="text-slate-400 text-xs">-</span>`;
 
     const otherText = bill.otherFee > 0
-      ? `<div><span class="font-semibold text-slate-700">${Number(bill.otherFee).toLocaleString()} ฿</span>${bill.otherFeeRemark ? `<span class="text-[10px] text-slate-500 block truncate max-w-[100px]" title="${bill.otherFeeRemark}">(${bill.otherFeeRemark})</span>` : ''}</div>`
+      ? `<div><span class="font-semibold text-slate-700">${Number(bill.otherFee).toLocaleString()} ฿</span></div>`
+      : `<span class="text-slate-400 text-xs">-</span>`;
+
+    const remarkContent = bill.otherFeeRemark || bill.remark || '';
+    const remarkDisplay = remarkContent
+      ? `<span class="bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md text-[11px] font-medium block max-w-[130px] truncate" title="${remarkContent}">${remarkContent}</span>`
       : `<span class="text-slate-400 text-xs">-</span>`;
 
     const elecText = bill.electricUnits > 0
@@ -1340,6 +1407,7 @@ function renderBills() {
         <td class="px-4 py-4 text-xs font-semibold text-slate-700">${Number(bill.commonFee || 0).toLocaleString()} ฿</td>
         <td class="px-4 py-4 text-xs">${parkingText}</td>
         <td class="px-4 py-4 text-xs">${otherText}</td>
+        <td class="px-4 py-4 text-xs">${remarkDisplay}</td>
         <td class="px-4 py-4 font-bold text-blue-700 text-base">${Number(bill.totalAmount).toLocaleString()} ฿</td>
         <td class="px-4 py-4">
           ${statusBadge}
@@ -1429,6 +1497,15 @@ function renderBills() {
               <div class="flex justify-between text-amber-700">
                 <span>อื่นๆ (${bill.otherFeeRemark || 'เพิ่มเติม'}):</span>
                 <span class="font-semibold">${Number(bill.otherFee).toLocaleString()} ฿</span>
+              </div>
+            ` : ''}
+            ${(bill.otherFeeRemark || bill.remark) ? `
+              <div class="mt-2 p-2 bg-amber-50/80 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-1.5">
+                <i data-lucide="message-square" class="w-3.5 h-3.5 mt-0.5 text-amber-600 flex-shrink-0"></i>
+                <div class="min-w-0">
+                  <span class="font-bold text-[11px] block">หมายเหตุ / รายละเอียดเพิ่มเติม:</span>
+                  <span class="break-words">${bill.otherFeeRemark || bill.remark}</span>
+                </div>
               </div>
             ` : ''}
           </div>
@@ -1657,6 +1734,9 @@ function onBillRoomSelect() {
 
   document.getElementById('formBillOtherFee').value = room.otherFee || 0;
   document.getElementById('formBillOtherRemark').value = room.otherFeeRemark || '';
+  if (document.getElementById('formBillRemark')) {
+    document.getElementById('formBillRemark').value = room.otherFeeRemark || '';
+  }
   document.getElementById('formBillDueDate').value = '';
 
   toggleBillOtherRemark();
@@ -1740,6 +1820,8 @@ async function saveBillForm(e) {
 
   const otherFee = Number(document.getElementById('formBillOtherFee').value || 0);
   const otherFeeRemark = document.getElementById('formBillOtherRemark').value.trim();
+  const billRemark = document.getElementById('formBillRemark')?.value.trim() || '';
+  const finalRemark = otherFeeRemark || billRemark || '';
   const dueDate = document.getElementById('formBillDueDate').value;
 
   const payload = {
@@ -1761,7 +1843,8 @@ async function saveBillForm(e) {
     waterRate: waterRate,
     waterAmount: waterAmount,
     otherFee,
-    otherFeeRemark,
+    otherFeeRemark: finalRemark,
+    remark: finalRemark,
     dueDate
   };
 
@@ -1794,10 +1877,22 @@ function renderSettingsInputs() {
   document.getElementById('settingDormName').value = state.settings.dormName || '';
   document.getElementById('settingDormPhone').value = state.settings.dormPhone || '';
   document.getElementById('settingDormAddress').value = state.settings.dormAddress || '';
-  document.getElementById('settingElectricRate').value = state.settings.electricRate || 8;
-  document.getElementById('settingWaterRate').value = state.settings.waterRate || 18;
-  document.getElementById('settingCommonFee').value = state.settings.commonFeeDefault || 300;
-  document.getElementById('settingPromptpayId').value = state.settings.promptpayId || '';
+
+  const elecVal = (state.settings.electricRate !== undefined && state.settings.electricRate !== '')
+    ? state.settings.electricRate : 8;
+  const waterVal = (state.settings.waterRate !== undefined && state.settings.waterRate !== '')
+    ? state.settings.waterRate : 18;
+  const commonVal = (state.settings.commonFeeDefault !== undefined && state.settings.commonFeeDefault !== '')
+    ? state.settings.commonFeeDefault
+    : ((state.settings.commonFee !== undefined && state.settings.commonFee !== '') ? state.settings.commonFee : 300);
+
+  document.getElementById('settingElectricRate').value = elecVal;
+  document.getElementById('settingWaterRate').value = waterVal;
+  document.getElementById('settingCommonFee').value = commonVal;
+
+  let ppId = state.settings.promptpayId || '';
+  if (/^\d{9}$/.test(String(ppId))) ppId = '0' + String(ppId);
+  document.getElementById('settingPromptpayId').value = ppId;
   document.getElementById('settingPromptpayName').value = state.settings.promptpayName || '';
   document.getElementById('settingLineToken').value = state.settings.lineToken || '';
 }
@@ -1819,7 +1914,14 @@ async function testGoogleSheetConnection() {
     const result = await res.json();
     if (result.success) {
       state.isConnected = true;
-      state.settings = result.data.settings || state.settings;
+      state.settings = { ...state.settings, ...(result.data.settings || {}) };
+      if (state.settings.promptpayId && /^\d{9}$/.test(String(state.settings.promptpayId))) {
+        state.settings.promptpayId = '0' + String(state.settings.promptpayId);
+      }
+      try {
+        localStorage.setItem('DORM_SETTINGS', JSON.stringify(state.settings));
+      } catch (e) {}
+
       state.rooms = result.data.rooms || state.rooms;
       state.bills = result.data.bills || state.bills;
       updateConnectionStatusUI(true);
@@ -1857,15 +1959,25 @@ async function saveSettings(e) {
 
   try {
     showLoading(true);
+
+    // 1. Immediately cache in local memory and browser storage
+    state.settings = { ...state.settings, ...payload };
+    try {
+      localStorage.setItem('DORM_SETTINGS', JSON.stringify(state.settings));
+    } catch (e) {}
+
+    // 2. Persist to Google Sheets via Apps Script API
     if (CONFIG.getScriptUrl()) {
       const res = await apiCall('saveSettings', { data: payload });
       if (!res.success) throw new Error(res.error);
     }
-    state.settings = { ...state.settings, ...payload };
-    document.getElementById('sidebarDormName').innerText = state.settings.dormName;
-    alert('บันทึกการตั้งค่าลง Google Sheets เรียบร้อยแล้ว!');
+
+    document.getElementById('sidebarDormName').innerText = state.settings.dormName || 'หอพัก';
+    renderSettingsInputs();
+    alert('✅ บันทึกการตั้งค่าลง Google Sheets และเบราว์เซอร์เรียบร้อยแล้ว!');
   } catch (err) {
-    alert(`ผิดพลาด: ${err.message}`);
+    renderSettingsInputs();
+    alert(`บันทึกลง Google Sheets ไม่สำเร็จ: ${err.message}\n(แต่ระบบได้จำค่าใหม่นี้ไว้ในเบราว์เซอร์เครื่องนี้ให้แล้ว กรุณาตรวจสอบว่าได้อัปเดตโค้ด Apps Script และกด Deploy New Version หรือยัง)`);
   } finally {
     showLoading(false);
   }
