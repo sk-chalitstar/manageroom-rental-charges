@@ -668,12 +668,12 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
   phoneStr = phoneStr.replace(/^(โทร[:\s]*)+/i, '').trim();
   const displayPhone = phoneStr ? `โทร: ${phoneStr}` : '';
 
-  // Items table matching invoice layout
+  // Items table matching invoice layout with compact, non-wrapping text
   const items = [
     {
       idx: '1',
       name: '1. ค่าเช่าห้องพัก',
-      units: '1 เดือน',
+      units: '1 ด.',
       rate: Number(bill.rent).toLocaleString(),
       amount: `${Number(bill.rent).toLocaleString()} ฿`
     }
@@ -683,16 +683,16 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
   if (bill.electricUnits > 0) {
     items.push({
       idx: '2',
-      name: `2. ค่าไฟฟ้า (${bill.prevElectricMeter}-${bill.currElectricMeter})`,
-      units: `${bill.electricUnits} หน่วย`,
-      rate: `${bill.electricRate || 8} ฿`,
+      name: `2. ค่าไฟฟ้า (${bill.prevElectricMeter}➔${bill.currElectricMeter})`,
+      units: `${bill.electricUnits}`,
+      rate: `${bill.electricRate || 8}`,
       amount: `${Number(bill.electricAmount).toLocaleString()} ฿`
     });
   } else {
     items.push({
       idx: '2',
-      name: `2. ค่าไฟฟ้า (ราคาเหมา)`,
-      units: `1 รายการ`,
+      name: `2. ค่าไฟฟ้า (เหมา)`,
+      units: `1`,
       rate: `-`,
       amount: `${Number(bill.electricAmount).toLocaleString()} ฿`
     });
@@ -702,16 +702,16 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
   if (bill.waterUnits > 0) {
     items.push({
       idx: '3',
-      name: `3. ค่าน้ำประปา (${bill.prevWaterMeter}-${bill.currWaterMeter})`,
-      units: `${bill.waterUnits} หน่วย`,
-      rate: `${bill.waterRate || 18} ฿`,
+      name: `3. ค่าน้ำประปา (${bill.prevWaterMeter}➔${bill.currWaterMeter})`,
+      units: `${bill.waterUnits}`,
+      rate: `${bill.waterRate || 18}`,
       amount: `${Number(bill.waterAmount).toLocaleString()} ฿`
     });
   } else {
     items.push({
       idx: '3',
-      name: `3. ค่าน้ำประปา (ราคาเหมา)`,
-      units: `1 รายการ`,
+      name: `3. ค่าน้ำประปา (เหมา)`,
+      units: `1`,
       rate: `-`,
       amount: `${Number(bill.waterAmount).toLocaleString()} ฿`
     });
@@ -722,7 +722,7 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
     items.push({
       idx: String(itemIdx++),
       name: `${itemIdx - 1}. ค่าส่วนกลาง`,
-      units: '1 เดือน',
+      units: '1 ด.',
       rate: Number(bill.commonFee).toLocaleString(),
       amount: `${Number(bill.commonFee).toLocaleString()} ฿`
     });
@@ -741,22 +741,22 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
   if (bill.otherFee > 0) {
     items.push({
       idx: String(itemIdx++),
-      name: `${itemIdx - 1}. ค่าอื่นๆ (${bill.otherFeeRemark || 'เพิ่มเติม'})`,
-      units: '1 รายการ',
+      name: `${itemIdx - 1}. ค่าอื่นๆ`,
+      units: '1',
       rate: '-',
       amount: `${Number(bill.otherFee).toLocaleString()} ฿`
     });
   }
 
-  // Convert table items into perfectly proportioned Flex rows
+  // Convert table items into perfectly proportioned Flex rows with wrap=true (no cutoffs)
   const itemRows = items.map((it, idx) => ({
     type: "box",
     layout: "horizontal",
-    paddingTop: "4px",
-    paddingBottom: "4px",
-    paddingStart: "6px",
-    paddingEnd: "6px",
-    backgroundColor: idx % 2 === 1 ? "#fbfcfd" : "#ffffff",
+    paddingTop: "5px",
+    paddingBottom: "5px",
+    paddingStart: "8px",
+    paddingEnd: "8px",
+    backgroundColor: idx % 2 === 1 ? "#f8fafc" : "#ffffff",
     alignItems: "center",
     contents: [
       {
@@ -765,7 +765,7 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
         size: "xxs",
         color: "#1e293b",
         wrap: true,
-        flex: 7,
+        flex: 6,
         align: "start"
       },
       {
@@ -774,7 +774,8 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
         size: "xxs",
         color: "#475569",
         align: "end",
-        flex: 3
+        wrap: true,
+        flex: 2
       },
       {
         type: "text",
@@ -782,7 +783,8 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
         size: "xxs",
         color: "#475569",
         align: "end",
-        flex: 3
+        wrap: true,
+        flex: 2
       },
       {
         type: "text",
@@ -791,51 +793,72 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
         weight: "bold",
         color: "#0f172a",
         align: "end",
-        flex: 4
+        wrap: true,
+        flex: 3
       }
     ]
   }));
 
   const flexContents = {
     type: "bubble",
-    size: "mega",
+    size: "giga",
     body: {
       type: "box",
       layout: "vertical",
       paddingAll: "14px",
       backgroundColor: "#ffffff",
       contents: [
-        // Top Header (Dorm Info on Left, Invoice & Bill ID on Right)
+        // 1. Top Title & Doc Type Header
         {
           type: "box",
           layout: "horizontal",
           contents: [
             {
+              type: "text",
+              text: dormSettings.dormName || "-:- หอพัก -:-",
+              weight: "bold",
+              size: "md",
+              color: "#0f172a",
+              flex: 7,
+              wrap: true
+            },
+            {
+              type: "text",
+              text: isPaid ? "ใบเสร็จรับเงิน (RECEIPT)" : "ใบแจ้งหนี้ (INVOICE)",
+              weight: "bold",
+              size: "xs",
+              color: isPaid ? "#059669" : "#1d4ed8",
+              align: "end",
+              flex: 5,
+              wrap: true
+            }
+          ]
+        },
+        // 2. Address & Bill Meta Sub-header
+        {
+          type: "box",
+          layout: "horizontal",
+          margin: "xs",
+          contents: [
+            {
               type: "box",
               layout: "vertical",
-              flex: 7,
+              flex: 6,
               spacing: "none",
               contents: [
-                {
-                  type: "text",
-                  text: dormSettings.dormName || "-:-หอพัก-:-",
-                  weight: "bold",
-                  size: "md",
-                  color: "#0f172a"
-                },
                 ...(dormSettings.dormAddress ? [{
                   type: "text",
                   text: dormSettings.dormAddress,
                   size: "xxs",
                   color: "#64748b",
-                  wrap: true,
-                  margin: "xs"
+                  wrap: true
                 }] : []),
                 ...(displayPhone ? [{
                   type: "text",
                   text: displayPhone,
                   size: "xxs",
                   color: "#64748b",
+                  wrap: true,
                   margin: "xs"
                 }] : [])
               ]
@@ -843,32 +866,25 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
             {
               type: "box",
               layout: "vertical",
-              flex: 5,
+              flex: 6,
               spacing: "none",
               contents: [
                 {
                   type: "text",
-                  text: isPaid ? "ใบเสร็จรับเงิน (RECEIPT)" : "ใบแจ้งหนี้ (INVOICE)",
-                  weight: "bold",
-                  size: "sm",
-                  color: isPaid ? "#059669" : "#0f172a",
-                  align: "end"
-                },
-                {
-                  type: "text",
-                  text: `เลขที่บิล: ${bill.id}`,
+                  text: `เลขที่: ${bill.id}`,
                   size: "xxs",
-                  color: "#475569",
+                  color: "#334155",
                   weight: "bold",
                   align: "end",
-                  margin: "xs"
+                  wrap: true
                 },
                 {
                   type: "text",
-                  text: `วันที่ออกบิล: ${formattedDate}`,
+                  text: `วันที่ออก: ${formattedDate}`,
                   size: "xxs",
                   color: "#64748b",
                   align: "end",
+                  wrap: true,
                   margin: "xs"
                 }
               ]
@@ -880,7 +896,7 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
           margin: "md",
           color: "#0f172a"
         },
-        // Tenant & Room Info (Middle section with natural spacing)
+        // 3. Tenant & Room Info
         {
           type: "box",
           layout: "horizontal",
@@ -895,24 +911,27 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
                 {
                   type: "text",
                   size: "xs",
+                  wrap: true,
                   contents: [
-                    { type: "span", text: "ห้องพักเลขที่: ", color: "#475569" },
+                    { type: "span", text: "ห้องพัก: ", color: "#475569" },
                     { type: "span", text: `${bill.roomNumber} (ชั้น ${bill.floor || '-'})`, color: "#1d4ed8", weight: "bold" }
                   ]
                 },
                 {
                   type: "text",
                   size: "xs",
+                  wrap: true,
                   contents: [
-                    { type: "span", text: "ประเภทห้อง: ", color: "#475569" },
+                    { type: "span", text: "ประเภท: ", color: "#475569" },
                     { type: "span", text: String(bill.roomType || 'มาตรฐาน'), color: "#0f172a", weight: "bold" }
                   ]
                 },
                 {
                   type: "text",
                   size: "xs",
+                  wrap: true,
                   contents: [
-                    { type: "span", text: "ชื่อผู้เช่าห้อง: ", color: "#475569" },
+                    { type: "span", text: "ผู้เช่า: ", color: "#475569" },
                     { type: "span", text: tenantName, color: "#0f172a", weight: "bold" }
                   ]
                 }
@@ -921,24 +940,26 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
             {
               type: "box",
               layout: "vertical",
-              flex: 5,
+              flex: 6,
               spacing: "xs",
               contents: [
                 {
                   type: "text",
                   size: "xs",
                   align: "end",
+                  wrap: true,
                   contents: [
-                    { type: "span", text: "ประจำรอบเดือน: ", color: "#475569" },
-                    { type: "span", text: formattedMonth, color: "#0f172a" }
+                    { type: "span", text: "รอบเดือน: ", color: "#475569" },
+                    { type: "span", text: formattedMonth, color: "#0f172a", weight: "bold" }
                   ]
                 },
                 {
                   type: "text",
                   size: "xs",
                   align: "end",
+                  wrap: true,
                   contents: [
-                    { type: "span", text: "กำหนดชำระภายใน: ", color: "#475569" },
+                    { type: "span", text: "กำหนดชำระ: ", color: "#475569" },
                     { type: "span", text: formattedDueDate, color: formattedDueDate !== '-' ? "#dc2626" : "#475569", weight: "bold" }
                   ]
                 }
@@ -951,40 +972,58 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
           margin: "md",
           color: "#cbd5e1"
         },
-        // Table Header (Proportionate: 7 : 3 : 3 : 4)
+        // 4. Table Header (Clean: รายการ / หน่วย / ราคา / จำนวนเงิน)
         {
           type: "box",
           layout: "horizontal",
           backgroundColor: "#f1f5f9",
           paddingTop: "6px",
           paddingBottom: "6px",
-          paddingStart: "6px",
-          paddingEnd: "6px",
+          paddingStart: "8px",
+          paddingEnd: "8px",
           cornerRadius: "4px",
           margin: "sm",
           alignItems: "center",
           contents: [
-            { type: "text", text: "รายการ", size: "xxs", weight: "bold", color: "#334155", flex: 7, align: "start" },
-            { type: "text", text: "จำนวนหน่วย", size: "xxs", weight: "bold", color: "#334155", flex: 3, align: "end" },
-            { type: "text", text: "ราคา/หน่วย", size: "xxs", weight: "bold", color: "#334155", flex: 3, align: "end" },
-            { type: "text", text: "จำนวนเงิน", size: "xxs", weight: "bold", color: "#334155", flex: 4, align: "end" }
+            { type: "text", text: "รายการ", size: "xxs", weight: "bold", color: "#334155", flex: 6, align: "start", wrap: true },
+            { type: "text", text: "หน่วย", size: "xxs", weight: "bold", color: "#334155", flex: 2, align: "end", wrap: true },
+            { type: "text", text: "ราคา", size: "xxs", weight: "bold", color: "#334155", flex: 2, align: "end", wrap: true },
+            { type: "text", text: "จำนวนเงิน", size: "xxs", weight: "bold", color: "#334155", flex: 3, align: "end", wrap: true }
           ]
         },
-        // Table Body
+        // 5. Table Body
         {
           type: "box",
           layout: "vertical",
           spacing: "none",
           contents: itemRows
         },
+        // 6. Additional Notice / Remark
         ...(bill.otherFeeRemark ? [{
           type: "box",
-          layout: "horizontal",
-          margin: "xs",
-          paddingStart: "6px",
-          paddingEnd: "6px",
+          layout: "vertical",
+          backgroundColor: "#fffbeb",
+          paddingAll: "8px",
+          cornerRadius: "6px",
+          borderColor: "#fde68a",
+          borderWidth: "1px",
+          margin: "sm",
           contents: [
-            { type: "text", text: `* หมายเหตุ: ${bill.otherFeeRemark}`, size: "xxs", color: "#b45309", wrap: true }
+            {
+              type: "text",
+              text: "📢 ข้อความแจ้งเพิ่มเติม:",
+              size: "xxs",
+              weight: "bold",
+              color: "#b45309"
+            },
+            {
+              type: "text",
+              text: bill.otherFeeRemark,
+              size: "xs",
+              color: "#78350f",
+              wrap: true,
+              margin: "xs"
+            }
           ]
         }] : []),
         {
@@ -992,13 +1031,13 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
           margin: "md",
           color: "#0f172a"
         },
-        // Total Due Banner (Left label & Right Amount perfectly aligned)
+        // 7. Total Due Banner
         {
           type: "box",
           layout: "horizontal",
           margin: "md",
-          paddingTop: "4px",
-          paddingBottom: "4px",
+          paddingTop: "6px",
+          paddingBottom: "6px",
           alignItems: "center",
           contents: [
             {
@@ -1008,7 +1047,8 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
               weight: "bold",
               color: "#0f172a",
               align: "start",
-              flex: 6
+              flex: 5,
+              wrap: true
             },
             {
               type: "text",
@@ -1017,48 +1057,66 @@ function buildBillFlexMessage(dormSettings, bill, publicUrl) {
               weight: "bold",
               color: "#1d4ed8",
               align: "end",
-              flex: 6
+              flex: 7
             }
           ]
         },
-        {
-          type: "separator",
-          margin: "md",
-          color: "#e2e8f0"
-        },
-        // Footer Payment & Signature Info
+        // 8. Payment Info Box (Full width, zero cutoff)
         {
           type: "box",
-          layout: "horizontal",
-          margin: "md",
+          layout: "vertical",
+          backgroundColor: "#f8fafc",
+          paddingAll: "10px",
+          cornerRadius: "8px",
+          margin: "sm",
+          spacing: "xs",
           contents: [
             {
+              type: "text",
+              text: "💳 ช่องทางการชำระเงิน",
+              size: "xs",
+              weight: "bold",
+              color: "#0f172a"
+            },
+            {
               type: "box",
-              layout: "vertical",
-              flex: 6,
-              spacing: "none",
+              layout: "horizontal",
               contents: [
-                { type: "text", text: "ช่องทางการชำระเงิน:", size: "xxs", weight: "bold", color: "#0f172a" },
+                { type: "text", text: "พร้อมเพย์:", size: "xs", color: "#64748b", flex: 3 },
                 { 
                   type: "text", 
-                  text: `พร้อมเพย์ (PromptPay): ${(/^\d{9}$/.test(String(dormSettings.promptpayId || '')) ? '0' + String(dormSettings.promptpayId) : (dormSettings.promptpayId || '-'))}`, 
-                  size: "xxs", 
-                  color: "#475569", 
-                  margin: "xs" 
-                },
-                { type: "text", text: `ชื่อบัญชี: ${dormSettings.promptpayName || '-'}`, size: "xxs", color: "#475569" },
-                { type: "text", text: "* กรุณาชำระเงินตามกำหนดเวลาที่ระบุไว้ในใบแจ้งหนี้", size: "xxs", color: "#94a3b8", margin: "xs", wrap: true }
+                  text: `${(/^\d{9}$/.test(String(dormSettings.promptpayId || '')) ? '0' + String(dormSettings.promptpayId) : (dormSettings.promptpayId || '-'))}`, 
+                  size: "xs", 
+                  weight: "bold", 
+                  color: "#1d4ed8", 
+                  flex: 7, 
+                  wrap: true 
+                }
               ]
             },
             {
               type: "box",
-              layout: "vertical",
-              flex: 5,
-              spacing: "none",
+              layout: "horizontal",
               contents: [
-                { type: "text", text: "ลงชื่อ ....................................", size: "xxs", color: "#64748b", align: "end", margin: "md" },
-                { type: "text", text: "(ผู้จัดการ / เจ้าของหอพัก)", size: "xxs", color: "#94a3b8", align: "end" }
+                { type: "text", text: "ชื่อบัญชี:", size: "xs", color: "#64748b", flex: 3 },
+                { 
+                  type: "text", 
+                  text: dormSettings.promptpayName || '-', 
+                  size: "xs", 
+                  weight: "bold", 
+                  color: "#334155", 
+                  flex: 7, 
+                  wrap: true 
+                }
               ]
+            },
+            {
+              type: "text",
+              text: "* กรุณาชำระเงินตามกำหนดเวลาที่ระบุไว้ในใบแจ้งหนี้",
+              size: "xxs",
+              color: "#94a3b8",
+              wrap: true,
+              margin: "xs"
             }
           ]
         }

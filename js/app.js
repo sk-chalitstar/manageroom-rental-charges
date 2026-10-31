@@ -1018,6 +1018,15 @@ function renderMeter() {
           </div>
         </div>
 
+        <!-- Additional Message / Notice Box on Card -->
+        <div class="bg-amber-50/70 border border-amber-200/90 rounded-xl p-3 space-y-1.5 shadow-2xs">
+          <label class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+            <i data-lucide="message-square" class="w-4 h-4 text-amber-600"></i>
+            แจ้งเพิ่มเติม (ข้อความที่จะแจ้งตอนออกบิล):
+          </label>
+          <input type="text" id="card-m-bill-notice-${room.number}" placeholder="เช่น กรุณาชำระก่อนวันที่ 5, มีพัสดุมาส่ง ฯลฯ" class="w-full border border-amber-300 rounded-lg p-2 text-xs bg-white text-slate-800 placeholder:text-slate-400 focus:outline-amber-500 font-medium">
+        </div>
+
         <button onclick="createBillFromCard('${room.number}')" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center justify-center gap-2">
           <i data-lucide="receipt" class="w-4 h-4"></i> ออกบิลห้อง ${room.number}
         </button>
@@ -1193,7 +1202,15 @@ async function createBillFromCard(roomNumber) {
   const licensePlate = document.getElementById(`card-m-plate-${roomNumber}`)?.value.trim() || '';
   const otherFee = Number(document.getElementById(`card-m-other-${roomNumber}`)?.value || 0);
   const otherFeeRemark = document.getElementById(`card-m-remark-${roomNumber}`)?.value.trim() || '';
+  const billNotice = document.getElementById(`card-m-bill-notice-${roomNumber}`)?.value.trim() || '';
   const dueDate = document.getElementById(`card-m-duedate-${roomNumber}`)?.value || document.getElementById('meterGlobalDueDate')?.value || '';
+
+  let finalRemark = '';
+  if (otherFeeRemark && billNotice) {
+    finalRemark = `${otherFeeRemark} (${billNotice})`;
+  } else {
+    finalRemark = otherFeeRemark || billNotice || '';
+  }
 
   const billPayload = {
     roomNumber: room.number,
@@ -1214,8 +1231,8 @@ async function createBillFromCard(roomNumber) {
     parkingFee,
     licensePlate,
     otherFee,
-    otherFeeRemark,
-    remark: otherFeeRemark,
+    otherFeeRemark: finalRemark,
+    remark: finalRemark,
     dueDate
   };
 
