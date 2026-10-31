@@ -22,8 +22,25 @@
   <!-- Global Loading Indicator -->
   <div id="globalLoadingBar" style="display: none;" class="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 animate-pulse"></div>
 
-  <!-- Sidebar Navigation -->
-  <aside class="w-full md:w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col justify-between">
+  <!-- Mobile Top Bar (Visible only on mobile screens < md) -->
+  <div class="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-md">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm">
+        <i data-lucide="building-2" class="w-4 h-4"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-sm tracking-tight" id="mobileDormName">หอพักสุขสบาย</h1>
+        <p class="text-[10px] text-slate-400">ระบบจัดการหอพัก</p>
+      </div>
+    </div>
+    <div id="mobileSheetStatusBadge" class="flex items-center gap-1.5 text-[11px] font-medium text-emerald-400 bg-slate-800 px-2.5 py-1 rounded-full border border-slate-700/60">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      Sheets
+    </div>
+  </div>
+
+  <!-- Sidebar Navigation (Desktop only) -->
+  <aside class="hidden md:flex md:w-64 bg-slate-900 text-white flex-shrink-0 flex-col justify-between">
     <div>
       <!-- Brand -->
       <div class="p-5 border-b border-slate-800 flex items-center gap-3">
@@ -76,86 +93,86 @@
   <!-- Main Content Body -->
   <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
     <!-- Top Header -->
-    <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+    <header class="bg-white border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4 flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 id="pageTitle" class="text-xl font-bold text-slate-800">ภาพรวมหอพัก</h2>
-        <p id="pageSubtitle" class="text-xs text-slate-500">สถิติห้องพัก ยอดค้างชำระ และข้อมูลล่าสุด</p>
+        <h2 id="pageTitle" class="text-lg sm:text-xl font-bold text-slate-800">ภาพรวมหอพัก</h2>
+        <p id="pageSubtitle" class="text-[11px] sm:text-xs text-slate-500">สถิติห้องพัก ยอดค้างชำระ และข้อมูลล่าสุด</p>
       </div>
 
       <!-- Quick Action Buttons -->
       <div class="flex items-center gap-2">
-        <button onclick="switchTab('meter')" class="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-semibold transition">
-          <i data-lucide="edit-3" class="w-4 h-4"></i>
-          จดมิเตอร์รอบนี้
+        <button onclick="switchTab('meter')" class="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-semibold transition">
+          <i data-lucide="edit-3" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+          จดมิเตอร์
         </button>
-        <button onclick="batchSendLineBills()" class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-xs font-semibold shadow-sm transition">
-          <i data-lucide="send" class="w-4 h-4"></i>
-          ส่งบิล LINE ทุกห้อง
+        <button onclick="batchSendLineBills()" class="flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-xs font-semibold shadow-sm transition">
+          <i data-lucide="send" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+          ส่ง LINE ทุกห้อง
         </button>
       </div>
     </header>
 
     <!-- Top Connection Notice Banner (Shows if not configured) -->
-    <div id="sheetConnectionBanner" class="hidden bg-amber-500 text-white px-6 py-3 text-xs flex items-center justify-between">
+    <div id="sheetConnectionBanner" class="hidden bg-amber-500 text-white px-4 py-2.5 sm:px-6 sm:py-3 text-xs flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
-        <span>ระบบกำลังทำงานด้วยข้อมูลตัวอย่าง กรุณาระบุ <strong>Google Apps Script Web App URL</strong> ในเมนูตั้งค่า เพื่อเชื่อมต่อ Google Sheet ของคุณ <span id="sheetBannerError"></span></span>
+        <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0"></i>
+        <span>ระบบกำลังทำงานด้วยข้อมูลตัวอย่าง กรุณาระบุ <strong>Web App URL</strong> ในเมนูตั้งค่า <span id="sheetBannerError"></span></span>
       </div>
-      <button onclick="switchTab('settings')" class="underline font-bold hover:text-amber-100">ไปที่ตั้งค่า ➔</button>
+      <button onclick="switchTab('settings')" class="underline font-bold hover:text-amber-100 whitespace-nowrap ml-2">ไปตั้งค่า ➔</button>
     </div>
 
-    <!-- Content Sections -->
-    <div class="p-6 space-y-6">
+    <!-- Content Sections (with pb-24 for mobile bottom nav) -->
+    <div class="p-3 sm:p-6 space-y-4 sm:space-y-6 pb-24 md:pb-8">
 
       <!-- ================= 1. TAB: DASHBOARD ================= -->
-      <section id="tab-dashboard" class="space-y-6">
-        <!-- Stat Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section id="tab-dashboard" class="space-y-4 sm:space-y-6">
+        <!-- Stat Cards (2x2 grid on mobile) -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           <!-- Total Rooms -->
-          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
             <div>
-              <p class="text-xs font-medium text-slate-500">ห้องพักทั้งหมด</p>
-              <h3 class="text-2xl font-bold text-slate-800 mt-1" id="statTotalRooms">0 ห้อง</h3>
-              <p class="text-xs text-emerald-600 font-medium mt-1" id="statOccupancyRate">มีผู้เช่า 0%</p>
+              <p class="text-[11px] sm:text-xs font-medium text-slate-500">ห้องทั้งหมด</p>
+              <h3 class="text-xl sm:text-2xl font-bold text-slate-800 mt-0.5 sm:mt-1" id="statTotalRooms">0 ห้อง</h3>
+              <p class="text-[10px] sm:text-xs text-emerald-600 font-medium mt-0.5" id="statOccupancyRate">มีผู้เช่า 0%</p>
             </div>
-            <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
-              <i data-lucide="home" class="w-6 h-6"></i>
+            <div class="w-9 h-9 sm:w-12 sm:h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <i data-lucide="home" class="w-5 h-5 sm:w-6 sm:h-6"></i>
             </div>
           </div>
 
           <!-- Occupied Rooms -->
-          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
             <div>
-              <p class="text-xs font-medium text-slate-500">ห้องที่มีผู้เช่า</p>
-              <h3 class="text-2xl font-bold text-emerald-600 mt-1" id="statOccupiedRooms">0 ห้อง</h3>
-              <p class="text-xs text-slate-400 mt-1">ห้องว่าง: <span id="statVacantRooms" class="font-semibold text-slate-700">0</span></p>
+              <p class="text-[11px] sm:text-xs font-medium text-slate-500">มีผู้เช่า</p>
+              <h3 class="text-xl sm:text-2xl font-bold text-emerald-600 mt-0.5 sm:mt-1" id="statOccupiedRooms">0 ห้อง</h3>
+              <p class="text-[10px] sm:text-xs text-slate-400 mt-0.5">ห้องว่าง: <span id="statVacantRooms" class="font-semibold text-slate-700">0</span></p>
             </div>
-            <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-              <i data-lucide="users" class="w-6 h-6"></i>
+            <div class="w-9 h-9 sm:w-12 sm:h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <i data-lucide="users" class="w-5 h-5 sm:w-6 sm:h-6"></i>
             </div>
           </div>
 
           <!-- Pending Payments -->
-          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
             <div>
-              <p class="text-xs font-medium text-slate-500">ยอดรอชำระ (บิลค้างจ่าย)</p>
-              <h3 class="text-2xl font-bold text-rose-600 mt-1" id="statPendingAmount">0 ฿</h3>
-              <p class="text-xs text-rose-500 font-medium mt-1"><span id="statPendingCount">0</span> รายการที่รอชำระ</p>
+              <p class="text-[11px] sm:text-xs font-medium text-slate-500">ยอดรอชำระ</p>
+              <h3 class="text-xl sm:text-2xl font-bold text-rose-600 mt-0.5 sm:mt-1" id="statPendingAmount">0 ฿</h3>
+              <p class="text-[10px] sm:text-xs text-rose-500 font-medium mt-0.5"><span id="statPendingCount">0</span> บิลค้างชำระ</p>
             </div>
-            <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center">
-              <i data-lucide="clock" class="w-6 h-6"></i>
+            <div class="w-9 h-9 sm:w-12 sm:h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <i data-lucide="clock" class="w-5 h-5 sm:w-6 sm:h-6"></i>
             </div>
           </div>
 
           <!-- Paid Revenue -->
-          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
             <div>
-              <p class="text-xs font-medium text-slate-500">รายรับที่ชำระแล้ว</p>
-              <h3 class="text-2xl font-bold text-indigo-600 mt-1" id="statPaidAmount">0 ฿</h3>
-              <p class="text-xs text-slate-400 mt-1" id="statMonthLabel">ประจำเดือนนี้</p>
+              <p class="text-[11px] sm:text-xs font-medium text-slate-500">รายรับชำระแล้ว</p>
+              <h3 class="text-xl sm:text-2xl font-bold text-indigo-600 mt-0.5 sm:mt-1" id="statPaidAmount">0 ฿</h3>
+              <p class="text-[10px] sm:text-xs text-slate-400 mt-0.5" id="statMonthLabel">ประจำเดือนนี้</p>
             </div>
-            <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
-              <i data-lucide="wallet" class="w-6 h-6"></i>
+            <div class="w-9 h-9 sm:w-12 sm:h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <i data-lucide="wallet" class="w-5 h-5 sm:w-6 sm:h-6"></i>
             </div>
           </div>
         </div>
@@ -814,9 +831,86 @@
     </div>
   </div>
 
+  <!-- 3. Modal: ระบุสาเหตุค่าอื่นๆ (Dynamic Popup Dialog) -->
+  <div id="otherFeeModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 border border-slate-100">
+      <div class="flex items-start justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="message-square-plus" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-800 text-sm">ระบุสาเหตุค่าอื่นๆ</h3>
+            <p class="text-xs text-blue-600 font-semibold" id="otherFeeModalRoomTitle">ห้อง -</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeOtherFeeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 flex items-center justify-between">
+          <span class="text-slate-600 font-medium">ยอดค่าใช้จ่ายอื่นๆ:</span>
+          <span id="otherFeeModalAmount" class="font-bold text-amber-700 text-sm">0 บาท</span>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">พิมพ์สาเหตุ / รายละเอียดค่าอื่นๆ:</label>
+          <input type="text" id="otherFeeModalInput" placeholder="เช่น ค่าเช่าตู้เย็น, ค่าคีย์การ์ด, ล้างแอร์..." class="w-full border border-amber-300 rounded-xl p-2.5 text-xs bg-white text-slate-800 focus:outline-amber-500 font-medium" autofocus>
+        </div>
+
+        <div>
+          <p class="text-[11px] text-slate-400 mb-1.5 font-medium">⚡ เลือกด่วน (แตะเพื่อใส่ข้อความ):</p>
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" onclick="setQuickOtherFeeRemark('ค่าเช่าตู้เย็น')" class="px-2 py-1 bg-slate-100 hover:bg-amber-100 hover:text-amber-900 text-slate-600 rounded-lg text-[11px] font-medium transition">🧊 ค่าเช่าตู้เย็น</button>
+            <button type="button" onclick="setQuickOtherFeeRemark('ค่าคีย์การ์ด')" class="px-2 py-1 bg-slate-100 hover:bg-amber-100 hover:text-amber-900 text-slate-600 rounded-lg text-[11px] font-medium transition">💳 ค่าคีย์การ์ด</button>
+            <button type="button" onclick="setQuickOtherFeeRemark('ค่าล้างแอร์')" class="px-2 py-1 bg-slate-100 hover:bg-amber-100 hover:text-amber-900 text-slate-600 rounded-lg text-[11px] font-medium transition">❄️ ค่าล้างแอร์</button>
+            <button type="button" onclick="setQuickOtherFeeRemark('ค่าทำความสะอาด')" class="px-2 py-1 bg-slate-100 hover:bg-amber-100 hover:text-amber-900 text-slate-600 rounded-lg text-[11px] font-medium transition">🧹 ค่าทำความสะอาด</button>
+            <button type="button" onclick="setQuickOtherFeeRemark('สติกเกอร์จอดรถ')" class="px-2 py-1 bg-slate-100 hover:bg-amber-100 hover:text-amber-900 text-slate-600 rounded-lg text-[11px] font-medium transition">🚗 สติกเกอร์จอดรถ</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="closeOtherFeeModal()" class="px-3.5 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-medium">
+          ปิด / ข้าม
+        </button>
+        <button type="button" onclick="saveOtherFeeModalRemark()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          บันทึกสาเหตุ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Navigation Bar (Fixed at bottom on mobile screens < md) -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-1 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] flex items-center justify-around">
+    <button onclick="switchTab('dashboard')" id="bottom-nav-dashboard" class="flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs transition text-blue-600 font-bold bg-blue-50 min-w-[56px]">
+      <i data-lucide="layout-dashboard" class="w-5 h-5 mb-0.5"></i>
+      <span class="text-[10px] leading-tight">ภาพรวม</span>
+    </button>
+    <button onclick="switchTab('rooms')" id="bottom-nav-rooms" class="flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs transition text-slate-500 font-medium hover:text-slate-800 min-w-[56px]">
+      <i data-lucide="door-open" class="w-5 h-5 mb-0.5"></i>
+      <span class="text-[10px] leading-tight">ห้องพัก</span>
+    </button>
+    <button onclick="switchTab('meter')" id="bottom-nav-meter" class="flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs transition text-slate-500 font-medium hover:text-slate-800 min-w-[56px]">
+      <i data-lucide="gauge" class="w-5 h-5 mb-0.5"></i>
+      <span class="text-[10px] leading-tight">จดมิเตอร์</span>
+    </button>
+    <button onclick="switchTab('bills')" id="bottom-nav-bills" class="flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs transition text-slate-500 font-medium hover:text-slate-800 min-w-[56px]">
+      <i data-lucide="receipt" class="w-5 h-5 mb-0.5"></i>
+      <span class="text-[10px] leading-tight">ออกบิล</span>
+    </button>
+    <button onclick="switchTab('settings')" id="bottom-nav-settings" class="flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs transition text-slate-500 font-medium hover:text-slate-800 min-w-[56px]">
+      <i data-lucide="settings" class="w-5 h-5 mb-0.5"></i>
+      <span class="text-[10px] leading-tight">ตั้งค่า</span>
+    </button>
+  </nav>
+
   <!-- Scripts with relative paths for GitHub Pages -->
-  <script src="./config.js?v=2.4"></script>
-  <script src="./js/promptpay.js?v=2.4"></script>
-  <script src="./js/app.js?v=2.4"></script>
+  <script src="./config.js?v=2.5"></script>
+  <script src="./js/promptpay.js?v=2.5"></script>
+  <script src="./js/app.js?v=2.5"></script>
 </body>
 </html>

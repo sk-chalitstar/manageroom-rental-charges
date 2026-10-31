@@ -157,6 +157,7 @@ function showLoading(show) {
 function updateConnectionStatusUI(connected, errorMsg = '') {
   const banner = document.getElementById('sheetConnectionBanner');
   const badge = document.getElementById('sheetStatusBadge');
+  const mobileBadge = document.getElementById('mobileSheetStatusBadge');
   const testMsg = document.getElementById('sheetTestResultMsg');
 
   if (badge) {
@@ -166,6 +167,16 @@ function updateConnectionStatusUI(connected, errorMsg = '') {
     } else {
       badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span> ยังไม่ต่อ Google Sheets`;
       badge.className = 'flex items-center gap-1.5 font-medium text-amber-300 text-xs';
+    }
+  }
+
+  if (mobileBadge) {
+    if (connected) {
+      mobileBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Sheets`;
+      mobileBadge.className = 'flex items-center gap-1.5 text-[11px] font-medium text-emerald-400 bg-slate-800 px-2.5 py-1 rounded-full border border-slate-700/60';
+    } else {
+      mobileBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span> ไม่ได้เชื่อม`;
+      mobileBadge.className = 'flex items-center gap-1.5 text-[11px] font-medium text-amber-400 bg-slate-800 px-2.5 py-1 rounded-full border border-slate-700/60';
     }
   }
 
@@ -223,7 +234,7 @@ function setupBillingMonthDefaults() {
 }
 
 // ----------------------------------------------------
-// TAB SWITCHING
+// TAB SWITCHING (Desktop Sidebar & Mobile Bottom Navigation)
 // ----------------------------------------------------
 function switchTab(tabId) {
   state.currentTab = tabId;
@@ -231,20 +242,33 @@ function switchTab(tabId) {
   tabs.forEach(t => {
     const el = document.getElementById(`tab-${t}`);
     const navBtn = document.getElementById(`nav-${t}`);
+    const bNavBtn = document.getElementById(`bottom-nav-${t}`);
     if (el) el.classList.add('hidden');
     if (navBtn) {
       navBtn.classList.remove('bg-blue-600', 'text-white');
       navBtn.classList.add('text-slate-300', 'hover:bg-slate-800');
     }
+    if (bNavBtn) {
+      bNavBtn.classList.remove('text-blue-600', 'font-bold', 'bg-blue-50');
+      bNavBtn.classList.add('text-slate-500', 'font-medium');
+    }
   });
 
   const activeEl = document.getElementById(`tab-${tabId}`);
   const activeNav = document.getElementById(`nav-${tabId}`);
+  const activeBNav = document.getElementById(`bottom-nav-${tabId}`);
   if (activeEl) activeEl.classList.remove('hidden');
   if (activeNav) {
     activeNav.classList.add('bg-blue-600', 'text-white');
     activeNav.classList.remove('text-slate-300', 'hover:bg-slate-800');
   }
+  if (activeBNav) {
+    activeBNav.classList.add('text-blue-600', 'font-bold', 'bg-blue-50');
+    activeBNav.classList.remove('text-slate-500', 'font-medium');
+  }
+
+  // Smooth scroll to top on mobile tab change
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 
   const titles = {
     dashboard: ['ภาพรวมหอพัก', 'สถิติห้องพัก ยอดค้างชำระ และข้อมูลล่าสุดจาก Google Sheets'],
@@ -254,8 +278,10 @@ function switchTab(tabId) {
     settings: ['ตั้งค่าหอพัก & ระบบ Google Sheets / LINE Bot', 'กำหนด Google Apps Script Web App URL และเชื่อมต่อ LINE Messaging API']
   };
 
-  document.getElementById('pageTitle').innerText = titles[tabId][0];
-  document.getElementById('pageSubtitle').innerText = titles[tabId][1];
+  if (document.getElementById('pageTitle') && titles[tabId]) {
+    document.getElementById('pageTitle').innerText = titles[tabId][0];
+    document.getElementById('pageSubtitle').innerText = titles[tabId][1];
+  }
 
   if (tabId === 'dashboard') loadDashboard();
   if (tabId === 'rooms') renderRooms();
@@ -666,16 +692,128 @@ function toggleCardMeterOtherRemark(roomNumber) {
   }
 }
 
-function toggleTableMeterOtherRemark(roomNumber) {
-  const val = Number(document.getElementById(`m-other-${roomNumber}`)?.value || 0);
-  const wrap = document.getElementById(`m-remark-wrap-${roomNumber}`);
-  const input = document.getElementById(`m-remark-${roomNumber}`);
-  if (wrap) {
-    if (val > 0) wrap.classList.remove('hidden');
-    else wrap.classList.add('hidden');
-  } else if (input) {
-    if (val > 0) input.classList.remove('hidden');
-    else input.classList.add('hidden');
+// ----------------------------------------------------
+// DYNAMIC OTHER FEE REMARK POPUP MODAL & HANDLERS
+// ----------------------------------------------------
+let currentOtherFeeModalRoom = null;
+
+function openOtherFeeModal(roomNumber) {
+  const room = state.rooms.find(r => String(r.number) === String(roomNumber));
+  if (!room) return;
+  currentOtherFeeModalRoom = roomNumber;
+
+  const tableInput = document.getElementById(`m-other-${roomNumber}`);
+  const cardInput = document.getElementById(`card-m-other-${roomNumber}`);
+  const currentAmount = tableInput ? tableInput.value : (cardInput ? cardInput.value : (room.otherFee || 0));
+
+  const tableRemark = document.getElementById(`m-remark-${roomNumber}`);
+  const cardRemark = document.getElementById(`card-m-remark-${roomNumber}`);
+  const currentRemark = tableRemark ? tableRemark.value : (cardRemark ? cardRemark.value : (room.otherFeeRemark || ''));
+
+  const titleEl = document.getElementById('otherFeeModalRoomTitle');
+  if (titleEl) titleEl.innerText = `ห้อง ${roomNumber} (${room.tenant?.name || 'ไม่มีชื่อผู้เช่า'})`;
+
+  const amountEl = document.getElementById('otherFeeModalAmount');
+  if (amountEl) amountEl.innerText = `${Number(currentAmount || 0).toLocaleString()} บาท`;
+
+  const modalInput = document.getElementById('otherFeeModalInput');
+  if (modalInput) {
+    modalInput.value = currentRemark || '';
+    modalInput.onkeydown = function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveOtherFeeModalRemark();
+      }
+    };
+  }
+
+  const modal = document.getElementById('otherFeeModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+      if (modalInput) {
+        modalInput.focus();
+        modalInput.select();
+      }
+    }, 100);
+  }
+  lucide.createIcons();
+}
+
+function closeOtherFeeModal() {
+  const modal = document.getElementById('otherFeeModal');
+  if (modal) modal.classList.add('hidden');
+  currentOtherFeeModalRoom = null;
+}
+
+function setQuickOtherFeeRemark(text) {
+  const input = document.getElementById('otherFeeModalInput');
+  if (input) {
+    input.value = text;
+    input.focus();
+  }
+}
+
+function saveOtherFeeModalRemark() {
+  if (!currentOtherFeeModalRoom) {
+    closeOtherFeeModal();
+    return;
+  }
+  const roomNumber = currentOtherFeeModalRoom;
+  const val = document.getElementById('otherFeeModalInput')?.value.trim() || '';
+
+  // Update in Table View
+  const tableHidden = document.getElementById(`m-remark-${roomNumber}`);
+  if (tableHidden) tableHidden.value = val;
+  const badgeText = document.getElementById(`m-remark-text-${roomNumber}`);
+  const badgeBtn = document.getElementById(`m-remark-badge-${roomNumber}`);
+  if (badgeText) badgeText.innerText = val || '+ ระบุสาเหตุ';
+  if (badgeBtn) {
+    if (val) {
+      badgeBtn.className = 'text-[10px] flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-medium';
+    } else {
+      badgeBtn.className = 'text-[10px] flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-dashed border-amber-300 font-bold animate-pulse';
+    }
+  }
+
+  // Update in Card View
+  const cardInput = document.getElementById(`card-m-remark-${roomNumber}`);
+  if (cardInput) cardInput.value = val;
+
+  // Update in local state room
+  const room = state.rooms.find(r => String(r.number) === String(roomNumber));
+  if (room) room.otherFeeRemark = val;
+
+  closeOtherFeeModal();
+  setTimeout(() => lucide.createIcons(), 50);
+}
+
+function handleOtherFeeInput(roomNumber) {
+  const input = document.getElementById(`m-other-${roomNumber}`);
+  const val = Number(input?.value || 0);
+  const badgeWrap = document.getElementById(`m-remark-badge-wrap-${roomNumber}`);
+  if (badgeWrap) {
+    if (val > 0) badgeWrap.classList.remove('hidden');
+    else badgeWrap.classList.add('hidden');
+  }
+  updateMeterRowCalc(roomNumber);
+}
+
+function handleOtherFeeChange(roomNumber) {
+  const input = document.getElementById(`m-other-${roomNumber}`);
+  const val = Number(input?.value || 0);
+  const currentRemark = document.getElementById(`m-remark-${roomNumber}`)?.value.trim() || '';
+  if (val > 0 && !currentRemark) {
+    openOtherFeeModal(roomNumber);
+  }
+}
+
+function handleCardOtherFeeChange(roomNumber) {
+  const input = document.getElementById(`card-m-other-${roomNumber}`);
+  const val = Number(input?.value || 0);
+  const currentRemark = document.getElementById(`card-m-remark-${roomNumber}`)?.value.trim() || '';
+  if (val > 0 && !currentRemark) {
+    openOtherFeeModal(roomNumber);
   }
 }
 
@@ -997,11 +1135,16 @@ function renderMeter() {
 
           <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200">
             <div>
-              <label class="block text-[11px] font-semibold text-slate-600 mb-1">ค่าอื่นๆ (บาท)</label>
-              <input type="number" id="card-m-other-${room.number}" value="${otherVal}" placeholder="0" oninput="toggleCardMeterOtherRemark('${room.number}'); updateMeterCardCalc('${room.number}')" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white focus:outline-blue-500 font-medium">
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-[11px] font-semibold text-slate-600">ค่าอื่นๆ (บาท)</label>
+                <button type="button" onclick="openOtherFeeModal('${room.number}')" class="text-[10px] text-amber-700 hover:text-amber-900 font-semibold flex items-center gap-0.5" title="ระบุสาเหตุค่าอื่นๆ">
+                  <i data-lucide="edit-3" class="w-2.5 h-2.5 text-amber-600"></i> สาเหตุ
+                </button>
+              </div>
+              <input type="number" id="card-m-other-${room.number}" value="${otherVal}" placeholder="0" oninput="toggleCardMeterOtherRemark('${room.number}'); updateMeterCardCalc('${room.number}')" onchange="handleCardOtherFeeChange('${room.number}')" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white focus:outline-blue-500 font-medium">
             </div>
             <div id="card-m-remark-group-${room.number}" class="${otherVal ? '' : 'hidden'}">
-              <label class="block text-[11px] font-semibold text-amber-700 mb-1">ระบุหมายเหตุค่าอื่นๆ *</label>
+              <label class="block text-[11px] font-semibold text-amber-700 mb-1">ระบุสาเหตุค่าอื่นๆ *</label>
               <input type="text" id="card-m-remark-${room.number}" value="${remarkVal}" placeholder="เช่น ค่าเช่าตู้เย็น, ค่าคีย์การ์ด" class="w-full border border-amber-300 rounded-lg p-1.5 text-xs bg-amber-50/50 focus:outline-amber-500">
             </div>
           </div>
@@ -1088,12 +1231,19 @@ function renderMeter() {
           <input type="text" id="m-plate-${room.number}" value="${plateVal}" placeholder="ทะเบียนรถ" class="w-24 border border-slate-200 rounded px-1.5 py-1 text-xs">
         </td>
         <td class="px-3 py-3">
-          <div class="flex items-center gap-1.5 whitespace-nowrap">
-            <input type="number" id="m-other-${room.number}" value="${otherVal}" placeholder="0" oninput="toggleTableMeterOtherRemark('${room.number}'); updateMeterRowCalc('${room.number}')" class="w-16 border border-slate-200 rounded px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-500 font-medium">
-            <div id="m-remark-wrap-${room.number}" class="${otherVal > 0 ? '' : 'hidden'}">
-              <input type="text" id="m-remark-${room.number}" value="${remarkVal}" placeholder="ระบุเหตุผล เช่น ค่าตู้เย็น" class="w-36 border border-amber-300 rounded px-2 py-1 text-xs bg-amber-50 text-amber-900 placeholder:text-amber-500 focus:outline-amber-500 font-medium shadow-2xs" title="ระบุหมายเหตุค่าอื่นๆ">
-            </div>
+          <div class="flex items-center gap-1">
+            <input type="number" id="m-other-${room.number}" value="${otherVal}" placeholder="0" oninput="handleOtherFeeInput('${room.number}')" onchange="handleOtherFeeChange('${room.number}')" class="w-16 border border-slate-200 rounded px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-500 font-medium">
+            <button type="button" onclick="openOtherFeeModal('${room.number}')" class="p-1 rounded text-slate-400 hover:text-amber-600 hover:bg-amber-50" title="ระบุสาเหตุค่าอื่นๆ">
+              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            </button>
           </div>
+          <div id="m-remark-badge-wrap-${room.number}" class="${otherVal > 0 ? '' : 'hidden'} mt-1">
+            <button type="button" onclick="openOtherFeeModal('${room.number}')" id="m-remark-badge-${room.number}" class="text-[10px] flex items-center gap-1 px-1.5 py-0.5 rounded ${remarkVal ? 'bg-amber-100 text-amber-900 border border-amber-300 font-medium' : 'bg-amber-50 text-amber-700 border border-dashed border-amber-300 font-bold animate-pulse'}" title="แตะเพื่อระบุหรือเปลี่ยนสาเหตุ">
+              <i data-lucide="${remarkVal ? 'tag' : 'plus-circle'}" class="w-2.5 h-2.5"></i>
+              <span id="m-remark-text-${room.number}" class="max-w-[100px] truncate">${remarkVal || '+ ระบุสาเหตุ'}</span>
+            </button>
+          </div>
+          <input type="hidden" id="m-remark-${room.number}" value="${remarkVal}">
         </td>
         <td class="px-3 py-3 bg-amber-50/20">
           <input type="text" id="m-bill-notice-${room.number}" placeholder="ข้อความแจ้งในบิล..." class="w-36 border border-amber-300 rounded px-2 py-1 text-xs bg-white text-slate-800 placeholder:text-slate-400 focus:ring-1 focus:ring-amber-500 font-medium">
@@ -1335,7 +1485,7 @@ async function createBillFromMeterRow(roomNumber) {
   if (otherFeeRemark && billNotice && otherFeeRemark !== billNotice) {
     finalRemark = `${otherFeeRemark} (${billNotice})`;
   } else {
-    finalRemark = billNotice || otherFeeRemark || '';
+    finalRemark = otherFeeRemark || billNotice || '';
   }
 
   const elecRate = Number(state.settings.electricRate || 8);
@@ -1939,7 +2089,9 @@ async function saveBillForm(e) {
 // 5. SETTINGS & GOOGLE SHEETS CONNECTION
 // ----------------------------------------------------
 function renderSettingsInputs() {
-  document.getElementById('sidebarDormName').innerText = state.settings.dormName || 'หอพักสุขสบาย';
+  const dormName = state.settings.dormName || 'หอพักสุขสบาย';
+  if (document.getElementById('sidebarDormName')) document.getElementById('sidebarDormName').innerText = dormName;
+  if (document.getElementById('mobileDormName')) document.getElementById('mobileDormName').innerText = dormName;
   document.getElementById('settingGoogleScriptUrl').value = CONFIG.getScriptUrl();
   document.getElementById('settingDormName').value = state.settings.dormName || '';
   document.getElementById('settingDormPhone').value = state.settings.dormPhone || '';
