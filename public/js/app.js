@@ -405,7 +405,12 @@ function loadDashboard() {
   const now = new Date();
   const currentMonth = now.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
 
-  document.getElementById('statTotalRooms').innerText = `${totalRooms} ห้อง`;
+  const maxLimit = (typeof CONFIG !== 'undefined' && CONFIG.MAX_ROOM_LIMIT) ? Number(CONFIG.MAX_ROOM_LIMIT) : 0;
+  if (maxLimit > 0) {
+    document.getElementById('statTotalRooms').innerText = `${totalRooms}/${maxLimit} ห้อง`;
+  } else {
+    document.getElementById('statTotalRooms').innerText = `${totalRooms} ห้อง`;
+  }
   document.getElementById('statOccupancyRate').innerText = `มีผู้เช่า ${occupancyRate}%`;
   document.getElementById('statOccupiedRooms').innerText = `${occupiedRooms} ห้อง`;
   document.getElementById('statVacantRooms').innerText = `${vacantRooms} ห้อง`;
@@ -450,7 +455,45 @@ function renderQuickRoomGrid() {
 // ----------------------------------------------------
 // 2. ROOMS MANAGEMENT
 // ----------------------------------------------------
+function updateRoomQuotaUI() {
+  const quotaWrap = document.getElementById('roomQuotaBadgeContainer');
+  const quotaText = document.getElementById('roomQuotaBadgeText');
+  const btnAddRoom = document.getElementById('btnAddRoom');
+  const maxLimit = (typeof CONFIG !== 'undefined' && CONFIG.MAX_ROOM_LIMIT) ? Number(CONFIG.MAX_ROOM_LIMIT) : 0;
+
+  if (!quotaWrap || !quotaText) return;
+
+  if (maxLimit > 0) {
+    quotaWrap.classList.remove('hidden');
+    quotaWrap.classList.add('flex');
+    const isFull = state.rooms.length >= maxLimit;
+    if (isFull) {
+      quotaWrap.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold bg-amber-50 text-amber-800 border-amber-300 shadow-sm';
+      quotaText.innerText = `โควต้า: ${state.rooms.length}/${maxLimit} ห้อง (เต็มโควต้า)`;
+      if (btnAddRoom) {
+        btnAddRoom.className = 'flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-lg text-sm font-semibold transition shadow-sm border border-slate-300 cursor-not-allowed';
+        btnAddRoom.title = `โควต้าห้องพักเต็มแล้ว (${maxLimit}/${maxLimit} ห้อง)`;
+      }
+    } else {
+      quotaWrap.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200 shadow-sm';
+      quotaText.innerText = `โควต้าห้อง: ${state.rooms.length}/${maxLimit} ห้อง`;
+      if (btnAddRoom) {
+        btnAddRoom.className = 'flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm';
+        btnAddRoom.title = 'เพิ่มห้องพักใหม่';
+      }
+    }
+  } else {
+    quotaWrap.classList.add('hidden');
+    quotaWrap.classList.remove('flex');
+    if (btnAddRoom) {
+      btnAddRoom.className = 'flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm';
+      btnAddRoom.title = 'เพิ่มห้องพักใหม่';
+    }
+  }
+}
+
 function renderRooms() {
+  updateRoomQuotaUI();
   const tbody = document.getElementById('roomsTableBody');
   const cardContainer = document.getElementById('roomsCardContainer');
   if (!tbody || !cardContainer) return;
@@ -611,6 +654,12 @@ function renderRooms() {
 }
 
 function openAddRoomModal() {
+  const maxLimit = (typeof CONFIG !== 'undefined' && CONFIG.MAX_ROOM_LIMIT) ? Number(CONFIG.MAX_ROOM_LIMIT) : 0;
+  if (maxLimit > 0 && state.rooms.length >= maxLimit) {
+    alert(`⚠️ ไม่สามารถเพิ่มห้องพักได้\n\nระบบจำกัดจำนวนห้องพักไว้สูงสุดที่ ${maxLimit} ห้อง (ปัจจุบันมี ${state.rooms.length} ห้อง)\nตามโควต้าแพ็กเกจการใช้งาน\n\nหากต้องการเพิ่มจำนวนห้องพัก กรุณาติดต่อผู้ให้บริการเพื่ออัปเกรดแพ็กเกจ`);
+    return;
+  }
+
   state.editingRoomId = null;
   document.getElementById('roomModalTitle').innerText = 'เพิ่มห้องพักใหม่';
   document.getElementById('formRoomNumber').value = '';
@@ -849,6 +898,14 @@ async function saveRoomForm(e) {
 
   const lastElectricMeter = Number(document.getElementById('formLastElecMeter').value || 0);
   const lastWaterMeter = Number(document.getElementById('formLastWaterMeter').value || 0);
+
+  // ตรวจสอบการจำกัดจำนวนห้องพัก (กรณีเพิ่มห้องใหม่)
+  const isExistingRoom = state.editingRoomId || state.rooms.some(r => String(r.number) === String(number));
+  const maxLimit = (typeof CONFIG !== 'undefined' && CONFIG.MAX_ROOM_LIMIT) ? Number(CONFIG.MAX_ROOM_LIMIT) : 0;
+  if (!isExistingRoom && maxLimit > 0 && state.rooms.length >= maxLimit) {
+    alert(`⚠️ ไม่สามารถบันทึกเพิ่มห้องพักได้\n\nเนื่องจากระบบจำกัดจำนวนห้องพักไว้สูงสุดที่ ${maxLimit} ห้อง (ปัจจุบันมี ${state.rooms.length} ห้อง)\nหากต้องการเพิ่มห้องพัก กรุณาติดต่อผู้ให้บริการเพื่ออัปเกรดแพ็กเกจ`);
+    return;
+  }
 
   const roomData = {
     number, floor, type, price, commonFee, parkingFee, licensePlate,

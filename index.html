@@ -209,7 +209,13 @@
             </select>
           </div>
 
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Room Quota Badge -->
+            <div id="roomQuotaBadgeContainer" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold">
+              <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+              <span id="roomQuotaBadgeText">โควต้า: 0/10 ห้อง</span>
+            </div>
+
             <!-- View Mode Toggle -->
             <div class="flex items-center bg-slate-200/80 p-1 rounded-xl text-xs">
               <button type="button" onclick="setRoomViewMode('card')" id="btnRoomViewCard" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition bg-white text-blue-600 shadow-sm">
@@ -222,9 +228,9 @@
               </button>
             </div>
 
-            <button onclick="openAddRoomModal()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm">
+            <button onclick="openAddRoomModal()" id="btnAddRoom" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm">
               <i data-lucide="plus" class="w-4 h-4"></i>
-              เพิ่มห้องพักใหม่
+              <span>เพิ่มห้องพักใหม่</span>
             </button>
           </div>
         </div>
@@ -909,9 +915,9 @@
   </nav>
 
   <!-- Scripts with relative paths for GitHub Pages -->
-  <script src="./config.js?v=2.5"></script>
-  <script src="./js/promptpay.js?v=2.5"></script>
-  <script src="./js/app.js?v=2.5"></script>
+  <script src="./config.js?v=2.6"></script>
+  <script src="./js/promptpay.js?v=2.6"></script>
+  <script src="./js/app.js?v=2.6"></script>
 </body>
 </html>
 
