@@ -132,6 +132,15 @@ async function loadAllDataFromSheet() {
 
       state.rooms = result.data.rooms || [];
       state.bills = result.data.bills || [];
+
+      // ซิงค์ MAX_ROOM_LIMIT จาก Google Apps Script (Backend) อัตโนมัติ
+      if (result.data.maxRoomLimit !== undefined && result.data.maxRoomLimit !== null) {
+        CONFIG.MAX_ROOM_LIMIT = Number(result.data.maxRoomLimit);
+        try {
+          localStorage.setItem('DORM_MAX_ROOM_LIMIT', CONFIG.MAX_ROOM_LIMIT);
+        } catch (e) {}
+      }
+
       state.isConnected = true;
       updateConnectionStatusUI(true);
     } else {
@@ -2200,6 +2209,15 @@ async function testGoogleSheetConnection() {
 
       state.rooms = result.data.rooms || state.rooms;
       state.bills = result.data.bills || state.bills;
+
+      // ซิงค์ MAX_ROOM_LIMIT จาก Google Apps Script (Backend) อัตโนมัติ
+      if (result.data && result.data.maxRoomLimit !== undefined && result.data.maxRoomLimit !== null) {
+        CONFIG.MAX_ROOM_LIMIT = Number(result.data.maxRoomLimit);
+        try {
+          localStorage.setItem('DORM_MAX_ROOM_LIMIT', CONFIG.MAX_ROOM_LIMIT);
+        } catch (e) {}
+      }
+
       updateConnectionStatusUI(true);
       renderRooms();
       renderMeter();

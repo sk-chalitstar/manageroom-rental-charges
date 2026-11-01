@@ -9,8 +9,8 @@
 // ==============================================================================
 // CONFIGURATION: จำกัดจำนวนห้องพักสูงสุด (สำหรับโมเดลนำระบบไปปล่อยเช่ารายเดือน)
 // ==============================================================================
-// กำหนดตัวเลข เช่น 10 เพื่อจำกัดไม่ให้เพิ่มเกิน 10 ห้อง (ใส่ 0 หรือ null หากไม่ต้องการจำกัด)
-const MAX_ROOM_LIMIT = 10;
+// กำหนดตัวเลข เช่น 20 เพื่อจำกัดไม่ให้เพิ่มเกิน 20 ห้อง (ใส่ 0 หรือ null หากไม่ต้องการจำกัด)
+const MAX_ROOM_LIMIT = 20;
 
 // ------------------------------------------------------------------------------
 // 1. INITIALIZATION & SETUP
@@ -301,7 +301,12 @@ function doGet(e) {
       const bills = getBillsList();
       return createJsonResponse({
         success: true,
-        data: { settings, rooms, bills }
+        data: {
+          settings,
+          rooms,
+          bills,
+          maxRoomLimit: (typeof MAX_ROOM_LIMIT !== 'undefined' ? MAX_ROOM_LIMIT : 0)
+        }
       });
     }
 
