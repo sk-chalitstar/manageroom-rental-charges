@@ -126,53 +126,101 @@
 
       <!-- ================= 1. TAB: DASHBOARD ================= -->
       <section id="tab-dashboard" class="space-y-4 sm:space-y-6">
-        <!-- Stat Cards (2x2 grid on mobile) -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <!-- Room Status Cards (2 cards on mobile/desktop) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
           <!-- Total Rooms -->
-          <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
             <div>
-              <p class="text-[11px] sm:text-xs font-medium text-slate-500">ห้องทั้งหมด</p>
-              <h3 class="text-xl sm:text-2xl font-bold text-slate-800 mt-0.5 sm:mt-1" id="statTotalRooms">0 ห้อง</h3>
-              <p class="text-[10px] sm:text-xs text-emerald-600 font-medium mt-0.5" id="statOccupancyRate">มีผู้เช่า 0%</p>
+              <p class="text-xs font-medium text-slate-500">ห้องพักทั้งหมด (โควต้าตามแพ็กเกจ)</p>
+              <h3 class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1" id="statTotalRooms">0 ห้อง</h3>
+              <p class="text-xs text-blue-600 font-semibold mt-1 flex items-center gap-1">
+                <i data-lucide="pie-chart" class="w-3.5 h-3.5"></i>
+                <span id="statOccupancyRate">มีผู้เช่า 0%</span>
+              </p>
             </div>
-            <div class="w-9 h-9 sm:w-12 sm:h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <i data-lucide="home" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+            <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <i data-lucide="home" class="w-6 h-6"></i>
             </div>
           </div>
 
           <!-- Occupied Rooms -->
-          <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
             <div>
-              <p class="text-[11px] sm:text-xs font-medium text-slate-500">มีผู้เช่า</p>
-              <h3 class="text-xl sm:text-2xl font-bold text-emerald-600 mt-0.5 sm:mt-1" id="statOccupiedRooms">0 ห้อง</h3>
-              <p class="text-[10px] sm:text-xs text-slate-400 mt-0.5">ห้องว่าง: <span id="statVacantRooms" class="font-semibold text-slate-700">0</span></p>
+              <p class="text-xs font-medium text-slate-500">สถานะผู้เช่าปัจจุบัน</p>
+              <h3 class="text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-1" id="statOccupiedRooms">0 ห้อง</h3>
+              <p class="text-xs text-slate-500 mt-1">
+                ห้องว่างพร้อมเช่า: <span id="statVacantRooms" class="font-bold text-slate-800">0</span> ห้อง
+              </p>
             </div>
-            <div class="w-9 h-9 sm:w-12 sm:h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <i data-lucide="users" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+            <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <i data-lucide="users" class="w-6 h-6"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Financial & Billing Summary Card with Month Filter -->
+        <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <!-- Section Header & Month Selector -->
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+            <div>
+              <h3 class="font-bold text-slate-800 text-base sm:text-lg flex items-center gap-2">
+                <i data-lucide="bar-chart-3" class="w-5 h-5 text-indigo-600"></i>
+                สรุปยอดบิลและรายรับหอพัก
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5">
+                <span id="statMonthLabel" class="font-medium text-slate-700">ทุกรอบเดือน (ยอดสะสมทั้งหมด)</span> • 
+                <span id="statCollectionRate" class="font-semibold text-emerald-600">ชำระแล้ว 0%</span>
+              </p>
+            </div>
+
+            <!-- Month Selector Dropdown -->
+            <div class="flex items-center gap-2">
+              <label for="dashboardMonthFilter" class="text-xs font-semibold text-slate-600 whitespace-nowrap">เลือกรอบเดือน:</label>
+              <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-sm">
+                <i data-lucide="calendar" class="w-4 h-4 text-slate-400 flex-shrink-0"></i>
+                <select id="dashboardMonthFilter" onchange="loadDashboard()" class="text-xs font-bold text-slate-700 bg-transparent focus:outline-none cursor-pointer">
+                  <option value="all">ทุกรอบเดือน (ยอดสะสมทั้งหมด)</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          <!-- Pending Payments -->
-          <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-            <div>
-              <p class="text-[11px] sm:text-xs font-medium text-slate-500">ยอดรอชำระ</p>
-              <h3 class="text-xl sm:text-2xl font-bold text-rose-600 mt-0.5 sm:mt-1" id="statPendingAmount">0 ฿</h3>
-              <p class="text-[10px] sm:text-xs text-rose-500 font-medium mt-0.5"><span id="statPendingCount">0</span> บิลค้างชำระ</p>
+          <!-- 3 Financial Stat Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <!-- Total Billed Amount -->
+            <div class="bg-blue-50/70 border border-blue-100 rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <p class="text-xs font-semibold text-blue-700">ยอดออกบิลรวมทั้งหมด</p>
+                <h3 class="text-xl sm:text-2xl font-extrabold text-blue-800 mt-1" id="statTotalBilledAmount">0 ฿</h3>
+                <p class="text-xs text-blue-600/80 font-medium mt-0.5" id="statTotalBilledCount">0 บิลที่ออก</p>
+              </div>
+              <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                <i data-lucide="file-text" class="w-5 h-5"></i>
+              </div>
             </div>
-            <div class="w-9 h-9 sm:w-12 sm:h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <i data-lucide="clock" class="w-5 h-5 sm:w-6 sm:h-6"></i>
-            </div>
-          </div>
 
-          <!-- Paid Revenue -->
-          <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-            <div>
-              <p class="text-[11px] sm:text-xs font-medium text-slate-500">รายรับชำระแล้ว</p>
-              <h3 class="text-xl sm:text-2xl font-bold text-indigo-600 mt-0.5 sm:mt-1" id="statPaidAmount">0 ฿</h3>
-              <p class="text-[10px] sm:text-xs text-slate-400 mt-0.5" id="statMonthLabel">ประจำเดือนนี้</p>
+            <!-- Paid Amount -->
+            <div class="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <p class="text-xs font-semibold text-emerald-700">รายรับชำระแล้ว</p>
+                <h3 class="text-xl sm:text-2xl font-extrabold text-emerald-800 mt-1" id="statPaidAmount">0 ฿</h3>
+                <p class="text-xs text-emerald-600 font-medium mt-0.5" id="statPaidCount">0 บิลชำระแล้ว</p>
+              </div>
+              <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                <i data-lucide="wallet" class="w-5 h-5"></i>
+              </div>
             </div>
-            <div class="w-9 h-9 sm:w-12 sm:h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <i data-lucide="wallet" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+
+            <!-- Pending Amount -->
+            <div class="bg-rose-50/70 border border-rose-100 rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <p class="text-xs font-semibold text-rose-700">ยอดรอชำระ / ค้างชำระ</p>
+                <h3 class="text-xl sm:text-2xl font-extrabold text-rose-800 mt-1" id="statPendingAmount">0 ฿</h3>
+                <p class="text-xs text-rose-600 font-medium mt-0.5" id="statPendingCount">0 บิลค้างชำระ</p>
+              </div>
+              <div class="w-10 h-10 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                <i data-lucide="clock" class="w-5 h-5"></i>
+              </div>
             </div>
           </div>
         </div>
@@ -347,17 +395,29 @@
 
       <!-- ================= 4. TAB: BILLS ================= -->
       <section id="tab-bills" class="space-y-6 hidden">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-          <div class="flex items-center gap-2">
-            <input type="text" id="billSearchInput" oninput="renderBills()" placeholder="ค้นหาเลขห้อง หรือรอบบิล..." class="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-blue-500 w-60 bg-white">
-            <select id="billStatusFilter" onchange="renderBills()" class="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-blue-500">
+        <!-- Bills Toolbar & Filters -->
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Search -->
+            <input type="text" id="billSearchInput" oninput="renderBills()" placeholder="ค้นหาเลขห้อง หรือรอบบิล..." class="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-blue-500 w-48 sm:w-56 bg-white">
+            
+            <!-- Month Filter -->
+            <div class="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm">
+              <i data-lucide="calendar" class="w-4 h-4 text-slate-400 flex-shrink-0"></i>
+              <select id="billMonthFilter" onchange="renderBills()" class="text-sm font-medium bg-transparent focus:outline-none text-slate-700 cursor-pointer">
+                <option value="all">ทุกรอบเดือน (ทั้งหมด)</option>
+              </select>
+            </div>
+
+            <!-- Status Filter -->
+            <select id="billStatusFilter" onchange="renderBills()" class="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white font-medium focus:outline-blue-500">
               <option value="all">สถานะทั้งหมด</option>
               <option value="pending">รอชำระเงิน (Pending)</option>
               <option value="paid">ชำระแล้ว (Paid)</option>
             </select>
           </div>
 
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <!-- Bills View Mode Toggle -->
             <div class="flex items-center bg-slate-200/80 p-1 rounded-xl text-xs">
               <button type="button" onclick="setBillViewMode('table')" id="btnBillViewTable" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition bg-white text-blue-600 shadow-sm">
@@ -370,14 +430,70 @@
               </button>
             </div>
 
-            <button onclick="openCreateBillModal()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm">
+            <button onclick="openCreateBillModal()" class="flex items-center gap-2 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm">
               <i data-lucide="file-plus" class="w-4 h-4"></i>
               ออกบิลใหม่
             </button>
-            <button onclick="batchSendLineBills()" class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition shadow-sm">
+            <button onclick="batchSendLineBills()" class="flex items-center gap-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition shadow-sm">
               <i data-lucide="send" class="w-4 h-4"></i>
-              ส่ง LINE บิลทั้งหมดที่รอชำระ
+              ส่ง LINE ทุกบิลค้างชำระ
             </button>
+          </div>
+        </div>
+
+        <!-- Bills Summary Banner (ยอดรวมบิลที่ออกทั้งหมด / แยกตามเดือน) -->
+        <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-2xl p-4 sm:p-5 text-white shadow-sm border border-slate-700/50">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-700/60 pb-3 mb-3.5">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                <i data-lucide="receipt" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold tracking-tight flex items-center gap-2">
+                  สรุปยอดรวมบิลค่าห้องพัก
+                  <span id="billSummaryCountBadge" class="text-[10px] bg-slate-700 px-2 py-0.5 rounded-full font-normal text-slate-300">0 รายการ</span>
+                </h4>
+                <p class="text-[11px] text-slate-400">รอบบิล: <span id="billSummaryMonthTitle" class="font-semibold text-amber-300">ทุกรอบเดือน</span></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <!-- Total Billed -->
+            <div class="bg-slate-800/80 border border-slate-700/70 rounded-xl p-3.5 flex items-center justify-between">
+              <div>
+                <span class="text-[11px] text-slate-300 block">ยอดออกบิลรวมทั้งหมด</span>
+                <span id="billSummaryTotal" class="text-xl sm:text-2xl font-extrabold text-white mt-0.5 block">0 ฿</span>
+                <span id="billSummaryTotalSub" class="text-[11px] text-slate-400">0 บิลที่ออก</span>
+              </div>
+              <div class="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="file-text" class="w-5 h-5"></i>
+              </div>
+            </div>
+
+            <!-- Paid Amount -->
+            <div class="bg-slate-800/80 border border-slate-700/70 rounded-xl p-3.5 flex items-center justify-between">
+              <div>
+                <span class="text-[11px] text-emerald-300 block">ชำระเงินแล้ว</span>
+                <span id="billSummaryPaid" class="text-xl sm:text-2xl font-extrabold text-emerald-400 mt-0.5 block">0 ฿</span>
+                <span id="billSummaryPaidSub" class="text-[11px] text-emerald-400/80">0 บิลชำระแล้ว</span>
+              </div>
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+              </div>
+            </div>
+
+            <!-- Pending Amount -->
+            <div class="bg-slate-800/80 border border-slate-700/70 rounded-xl p-3.5 flex items-center justify-between">
+              <div>
+                <span class="text-[11px] text-rose-300 block">ยอดรอชำระ / ค้างชำระ</span>
+                <span id="billSummaryPending" class="text-xl sm:text-2xl font-extrabold text-rose-400 mt-0.5 block">0 ฿</span>
+                <span id="billSummaryPendingSub" class="text-[11px] text-rose-400/80">0 บิลค้างชำระ</span>
+              </div>
+              <div class="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="clock" class="w-5 h-5"></i>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -915,8 +1031,8 @@
   </nav>
 
   <!-- Scripts with relative paths for GitHub Pages -->
-  <script src="./config.js?v=2.7"></script>
-  <script src="./js/promptpay.js?v=2.7"></script>
-  <script src="./js/app.js?v=2.7"></script>
+  <script src="./config.js?v=2.8"></script>
+  <script src="./js/promptpay.js?v=2.8"></script>
+  <script src="./js/app.js?v=2.8"></script>
 </body>
 </html>

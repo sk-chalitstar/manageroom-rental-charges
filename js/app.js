@@ -216,6 +216,7 @@ function updateConnectionStatusUI(connected, errorMsg = '') {
 document.addEventListener('DOMContentLoaded', async () => {
   setupBillingMonthDefaults();
   await loadAllDataFromSheet();
+  populateMonthDropdowns();
   loadDashboard();
   renderRooms();
   renderMeter();
@@ -292,10 +293,16 @@ function switchTab(tabId) {
     document.getElementById('pageSubtitle').innerText = titles[tabId][1];
   }
 
-  if (tabId === 'dashboard') loadDashboard();
+  if (tabId === 'dashboard') {
+    populateMonthDropdowns();
+    loadDashboard();
+  }
   if (tabId === 'rooms') renderRooms();
   if (tabId === 'meter') renderMeter();
-  if (tabId === 'bills') renderBills();
+  if (tabId === 'bills') {
+    populateMonthDropdowns();
+    renderBills();
+  }
   if (tabId === 'settings') renderSettingsInputs();
 
   setTimeout(() => lucide.createIcons(), 50);
@@ -387,8 +394,56 @@ function toggleBillOtherRemark() {
 }
 
 // ----------------------------------------------------
-// 1. DASHBOARD
+// 1. DASHBOARD & MONTH FILTERS
 // ----------------------------------------------------
+function getDistinctBillMonths() {
+  const monthsSet = new Set();
+  (state.bills || []).forEach(bill => {
+    if (bill.month) {
+      const formatted = typeof formatMonthName === 'function' ? formatMonthName(bill.month) : String(bill.month).trim();
+      if (formatted && formatted !== '-') monthsSet.add(formatted);
+    }
+  });
+
+  const now = new Date();
+  const currentThaiMonth = now.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+  monthsSet.add(currentThaiMonth);
+
+  return Array.from(monthsSet);
+}
+
+function populateMonthDropdowns() {
+  const months = getDistinctBillMonths();
+
+  // 1. Dashboard month selector
+  const dashSelect = document.getElementById('dashboardMonthFilter');
+  if (dashSelect) {
+    const currentVal = dashSelect.value;
+    const optionsHtml = `<option value="all">ทุกรอบเดือน (ยอดสะสมทั้งหมด)</option>` +
+      months.map(m => `<option value="${m}">${m}</option>`).join('');
+    dashSelect.innerHTML = optionsHtml;
+    if (currentVal && (currentVal === 'all' || months.includes(currentVal))) {
+      dashSelect.value = currentVal;
+    } else {
+      dashSelect.value = 'all';
+    }
+  }
+
+  // 2. Bills tab month selector
+  const billSelect = document.getElementById('billMonthFilter');
+  if (billSelect) {
+    const currentVal = billSelect.value;
+    const optionsHtml = `<option value="all">ทุกรอบเดือน (ทั้งหมด)</option>` +
+      months.map(m => `<option value="${m}">${m}</option>`).join('');
+    billSelect.innerHTML = optionsHtml;
+    if (currentVal && (currentVal === 'all' || months.includes(currentVal))) {
+      billSelect.value = currentVal;
+    } else {
+      billSelect.value = 'all';
+    }
+  }
+}
+
 function loadDashboard() {
   const rooms = state.rooms;
   const bills = state.bills;
@@ -398,22 +453,39 @@ function loadDashboard() {
   const vacantRooms = rooms.filter(r => r.status === 'vacant').length;
   const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
-  let totalPendingAmount = 0;
-  let totalPaidThisMonth = 0;
-  let pendingBillsCount = 0;
+  // Selected month filter on Dashboard
+  const monthFilter = document.getElementById('dashboardMonthFilter')?.value || 'all';
 
-  bills.forEach(bill => {
-    if (bill.status === 'pending' || bill.status === 'overdue') {
-      totalPendingAmount += Number(bill.totalAmount || 0);
-      pendingBillsCount++;
-    } else if (bill.status === 'paid') {
-      totalPaidThisMonth += Number(bill.totalAmount || 0);
+  const targetBills = (monthFilter === 'all')
+    ? bills
+    : bills.filter(b => {
+        const fm = typeof formatMonthName === 'function' ? formatMonthName(b.month) : String(b.month || '');
+        return fm === monthFilter || String(b.month).trim() === monthFilter;
+      });
+
+  let totalBilledAmount = 0;
+  let totalBilledCount = 0;
+  let totalPaidAmount = 0;
+  let paidCount = 0;
+  let totalPendingAmount = 0;
+  let pendingCount = 0;
+
+  targetBills.forEach(bill => {
+    const amt = Number(bill.totalAmount || 0);
+    totalBilledAmount += amt;
+    totalBilledCount++;
+    if (bill.status === 'paid') {
+      totalPaidAmount += amt;
+      paidCount++;
+    } else {
+      totalPendingAmount += amt;
+      pendingCount++;
     }
   });
 
-  const now = new Date();
-  const currentMonth = now.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+  const collectionRate = totalBilledAmount > 0 ? Math.round((totalPaidAmount / totalBilledAmount) * 100) : 0;
 
+  // Room Stats
   const maxLimit = (typeof CONFIG !== 'undefined' && CONFIG.MAX_ROOM_LIMIT) ? Number(CONFIG.MAX_ROOM_LIMIT) : 0;
   if (maxLimit > 0) {
     document.getElementById('statTotalRooms').innerText = `${totalRooms}/${maxLimit} ห้อง`;
@@ -422,13 +494,37 @@ function loadDashboard() {
   }
   document.getElementById('statOccupancyRate').innerText = `มีผู้เช่า ${occupancyRate}%`;
   document.getElementById('statOccupiedRooms').innerText = `${occupiedRooms} ห้อง`;
-  document.getElementById('statVacantRooms').innerText = `${vacantRooms} ห้อง`;
-  document.getElementById('statPendingAmount').innerText = `${totalPendingAmount.toLocaleString()} ฿`;
-  document.getElementById('statPendingCount').innerText = pendingBillsCount;
-  document.getElementById('statPaidAmount').innerText = `${totalPaidThisMonth.toLocaleString()} ฿`;
-  document.getElementById('statMonthLabel').innerText = `รอบ: ${currentMonth}`;
+  const elVacant = document.getElementById('statVacantRooms');
+  if (elVacant) elVacant.innerText = `${vacantRooms}`;
+
+  // Financial Stats
+  const elBilled = document.getElementById('statTotalBilledAmount');
+  if (elBilled) elBilled.innerText = `${totalBilledAmount.toLocaleString()} ฿`;
+  const elBilledCount = document.getElementById('statTotalBilledCount');
+  if (elBilledCount) elBilledCount.innerText = `${totalBilledCount} บิลที่ออก`;
+
+  const elPaid = document.getElementById('statPaidAmount');
+  if (elPaid) elPaid.innerText = `${totalPaidAmount.toLocaleString()} ฿`;
+  const elPaidCount = document.getElementById('statPaidCount');
+  if (elPaidCount) elPaidCount.innerText = `${paidCount} บิลชำระแล้ว`;
+
+  const elPending = document.getElementById('statPendingAmount');
+  if (elPending) elPending.innerText = `${totalPendingAmount.toLocaleString()} ฿`;
+  const elPendingCount = document.getElementById('statPendingCount');
+  if (elPendingCount) elPendingCount.innerText = `${pendingCount} บิลค้างชำระ`;
+
+  const elMonthLabel = document.getElementById('statMonthLabel');
+  if (elMonthLabel) {
+    elMonthLabel.innerText = monthFilter === 'all' ? 'ทุกรอบเดือน (ยอดสะสมทั้งหมด)' : `รอบบิล: ${monthFilter}`;
+  }
+
+  const elCollectionRate = document.getElementById('statCollectionRate');
+  if (elCollectionRate) {
+    elCollectionRate.innerText = `ชำระแล้ว ${collectionRate}%`;
+  }
 
   renderQuickRoomGrid();
+  lucide.createIcons();
 }
 
 function renderQuickRoomGrid() {
@@ -1474,6 +1570,7 @@ async function createBillFromCard(roomNumber) {
     
     alert(`สร้างบิลห้อง ${roomNumber} เรียบร้อยแล้ว!`);
     await loadAllDataFromSheet();
+    populateMonthDropdowns();
     renderBills();
     renderMeter();
     loadDashboard();
@@ -1562,6 +1659,7 @@ async function createBillFromMeterRow(roomNumber) {
     
     alert(`สร้างบิลห้อง ${roomNumber} เรียบร้อยแล้ว!`);
     await loadAllDataFromSheet();
+    populateMonthDropdowns();
     renderBills();
     renderMeter();
     loadDashboard();
@@ -1587,18 +1685,80 @@ function renderBills() {
 
   const search = (document.getElementById('billSearchInput')?.value || '').toLowerCase();
   const filter = document.getElementById('billStatusFilter')?.value || 'all';
+  const monthFilter = document.getElementById('billMonthFilter')?.value || 'all';
 
+  // 1. คำนวณยอดรวมของบิลตามรอบเดือนที่เลือก (หรือทั้งหมด)
+  const monthTargetBills = (monthFilter === 'all')
+    ? state.bills
+    : state.bills.filter(b => {
+        const fm = typeof formatMonthName === 'function' ? formatMonthName(b.month) : String(b.month || '');
+        return fm === monthFilter || String(b.month).trim() === monthFilter;
+      });
+
+  let summaryTotalAmount = 0;
+  let summaryTotalCount = 0;
+  let summaryPaidAmount = 0;
+  let summaryPaidCount = 0;
+  let summaryPendingAmount = 0;
+  let summaryPendingCount = 0;
+
+  monthTargetBills.forEach(b => {
+    const amt = Number(b.totalAmount || 0);
+    summaryTotalAmount += amt;
+    summaryTotalCount++;
+    if (b.status === 'paid') {
+      summaryPaidAmount += amt;
+      summaryPaidCount++;
+    } else {
+      summaryPendingAmount += amt;
+      summaryPendingCount++;
+    }
+  });
+
+  const elTitle = document.getElementById('billSummaryMonthTitle');
+  if (elTitle) elTitle.innerText = monthFilter === 'all' ? 'ทุกรอบเดือน (ทั้งหมด)' : monthFilter;
+
+  const elCountBadge = document.getElementById('billSummaryCountBadge');
+  if (elCountBadge) elCountBadge.innerText = `${summaryTotalCount} รายการ`;
+
+  const elTotal = document.getElementById('billSummaryTotal');
+  if (elTotal) elTotal.innerText = `${summaryTotalAmount.toLocaleString()} ฿`;
+  const elTotalSub = document.getElementById('billSummaryTotalSub');
+  if (elTotalSub) elTotalSub.innerText = `${summaryTotalCount} บิลที่ออก`;
+
+  const elPaid = document.getElementById('billSummaryPaid');
+  if (elPaid) elPaid.innerText = `${summaryPaidAmount.toLocaleString()} ฿`;
+  const elPaidSub = document.getElementById('billSummaryPaidSub');
+  if (elPaidSub) elPaidSub.innerText = `${summaryPaidCount} บิลชำระแล้ว`;
+
+  const elPending = document.getElementById('billSummaryPending');
+  if (elPending) elPending.innerText = `${summaryPendingAmount.toLocaleString()} ฿`;
+  const elPendingSub = document.getElementById('billSummaryPendingSub');
+  if (elPendingSub) elPendingSub.innerText = `${summaryPendingCount} บิลค้างชำระ`;
+
+  // 2. กรองรายการบิลเพื่อแสดงผล (ตามเดือน, สถานะ, และคำค้นหา)
   const filtered = state.bills.filter(bill => {
+    const formattedMonth = typeof formatMonthName === 'function' ? formatMonthName(bill.month) : String(bill.month || '');
+    const matchMonth = (monthFilter === 'all') || 
+      (formattedMonth === monthFilter) || 
+      (String(bill.month).trim() === monthFilter);
+
     const matchSearch = String(bill.roomNumber).toLowerCase().includes(search) ||
       (bill.month && bill.month.toLowerCase().includes(search)) ||
+      (formattedMonth && formattedMonth.toLowerCase().includes(search)) ||
+      (bill.tenantName && bill.tenantName.toLowerCase().includes(search)) ||
+      (bill.id && bill.id.toLowerCase().includes(search)) ||
       (bill.licensePlate && bill.licensePlate.toLowerCase().includes(search));
+
     const matchStatus = filter === 'all' || bill.status === filter;
-    return matchSearch && matchStatus;
+
+    return matchMonth && matchSearch && matchStatus;
   });
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-slate-400">ยังไม่มีข้อมูลบิลในระบบ</td></tr>`;
-    cardContainer.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 bg-white rounded-2xl border border-slate-200">ยังไม่มีข้อมูลบิลในระบบ</div>`;
+    tbody.innerHTML = `<tr><td colspan="13" class="text-center py-8 text-slate-400">ไม่พบบิลตามเงื่อนไขที่เลือก</td></tr>`;
+    cardContainer.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 bg-white rounded-2xl border border-slate-200">ไม่พบบิลตามเงื่อนไขที่เลือก</div>`;
+    lucide.createIcons();
     return;
   }
 
@@ -1874,6 +2034,7 @@ async function deleteBill(billId) {
       }
     }
 
+    populateMonthDropdowns();
     renderBills();
     renderMeter();
     loadDashboard();
@@ -2107,6 +2268,7 @@ async function saveBillForm(e) {
 
     closeBillModal();
     await loadAllDataFromSheet();
+    populateMonthDropdowns();
     renderBills();
     renderMeter();
     loadDashboard();
@@ -2186,6 +2348,7 @@ async function testGoogleSheetConnection() {
       }
 
       updateConnectionStatusUI(true);
+      populateMonthDropdowns();
       renderRooms();
       renderMeter();
       renderBills();
