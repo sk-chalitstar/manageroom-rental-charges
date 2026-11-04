@@ -10,7 +10,7 @@ const CONFIG = {
       const cached = localStorage.getItem('DORM_MAX_ROOM_LIMIT');
       if (cached !== null && cached !== '') return Number(cached);
     } catch (e) {}
-    return 20; // ค่าเริ่มต้น (เช่น 20 ห้อง)
+    return 50; // ค่าเริ่มต้น (เช่น 20 ห้อง)
   })(),
 
   // อ่าน URL จาก query string (?gasUrl=...) ก่อน หากไม่มีให้อ่านจาก localStorage
